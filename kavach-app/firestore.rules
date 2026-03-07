@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Function to get current user's role
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    match /users/{userId} {
+      // Users can read themselves. Admins AND Responders can read all users
+      allow read: if request.auth != null && (request.auth.uid == userId || getUserRole() in ['admin', 'responder']);
+      
+      // Creating an account: new users can only be created as students
+      allow create: if request.auth != null && 
+        request.auth.uid == userId && 
+        request.resource.data.role == 'student';
+        
+      // Users can update their own profile EXCEPT for the role field
+      allow update: if request.auth != null && request.auth.uid == userId && 
+                    (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
+                    
+      // Admins can update any user (including roles) and delete users
+      allow update, delete: if request.auth != null && getUserRole() == 'admin';
+    }
+
+    match /incidents/{incidentId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || getUserRole() in ['admin', 'responder']);
+      allow delete: if request.auth != null && getUserRole() == 'admin';
+    }
+
+    match /zones/{zoneId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && getUserRole() == 'admin';
+    }
+  }
+}
