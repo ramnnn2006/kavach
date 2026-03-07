@@ -1,0 +1,28 @@
+﻿node.exe : - Creating your Web app
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" 
+"C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifie 
+   d: (- Creating your Web app:String) [  
+  ], RemoteException
+    + FullyQualifiedErrorId : NativeComma 
+   ndError
+ 
+Γ£ö Creating your Web app
+{
+  "status": "success",
+  "result": {
+    "@type": "type.googleapis.com/google.firebase.service.v1beta1.WebApp",
+    "name": "projects/kavach-app-project-123/webApps/1:696027734104:web:cf98540bc6e102253aea2d",
+    "appId": "1:696027734104:web:cf98540bc6e102253aea2d",
+    "displayName": "Kavach App Web",
+    "projectId": "kavach-app-project-123",
+    "webId": "MzhhMjJkZGMtMzBkZS00OGM4LTk0MWUtNzYzMTNjNGU1ZDdl",
+    "apiKeyId": "f84557cc-1fe3-42cd-963e-3b879fc7cec9",
+    "state": "ACTIVE",
+    "expireTime": "1970-01-01T00:00:00Z",
+    "etag": "1_777cdd23-ee13-4bb2-9d11-5764d507e048"
+  }
+}

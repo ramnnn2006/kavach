@@ -1,0 +1,16 @@
+﻿{
+  "status": "success",
+  "result": [
+    {
+      "projectId": "ffcscysm",
+      "projectNumber": "77412571937",
+      "displayName": "ffcscysm",
+      "name": "projects/ffcscysm",
+      "resources": {
+        "hostingSite": "ffcscysm"
+      },
+      "state": "ACTIVE",
+      "etag": "1_6df689d2-1c18-418e-935c-b64ccf00fae0"
+    }
+  ]
+}

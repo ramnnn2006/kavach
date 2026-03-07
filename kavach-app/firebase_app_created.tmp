@@ -1,0 +1,15 @@
+﻿{
+  "status": "success",
+  "result": {
+    "@type": "type.googleapis.com/google.firebase.service.v1beta1.WebApp",
+    "name": "projects/ffcscysm/webApps/1:77412571937:web:18d078cf438478bc36bc60",
+    "appId": "1:77412571937:web:18d078cf438478bc36bc60",
+    "displayName": "Kavach Web",
+    "projectId": "ffcscysm",
+    "webId": "OTkyMWZlM2EtZmEwZC00YzM0LThkZTEtNzU0MjIzZDdhMjU2",
+    "apiKeyId": "d780cab6-afbe-4202-8401-b74007f14ecf",
+    "state": "ACTIVE",
+    "expireTime": "1970-01-01T00:00:00Z",
+    "etag": "1_4dd72ee5-4b20-498c-85b0-35594d59f99c"
+  }
+}

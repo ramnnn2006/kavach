@@ -1,0 +1,18 @@
+﻿{
+  "status": "success",
+  "result": {
+    "fileName": "firebase-js-config.json",
+    "fileContents": "{\n  \"projectId\": \"ffcscysm\",\n  \"appId\": \"1:77412571937:web:18d078cf438478bc36bc60\",\n  \"storageBucket\": \"ffcscysm.firebasestorage.app\",\n  \"apiKey\": \"AIzaSyBGvs7-jK2ZtI3pWkgmrkMc06Wxlx5n-IA\",\n  \"authDomain\": \"ffcscysm.firebaseapp.com\",\n  \"messagingSenderId\": \"77412571937\",\n  \"measurementId\": \"G-77D0G9ZTZF\",\n  \"projectNumber\": \"77412571937\",\n  \"version\": \"2\"\n}",
+    "sdkConfig": {
+      "projectId": "ffcscysm",
+      "appId": "1:77412571937:web:18d078cf438478bc36bc60",
+      "storageBucket": "ffcscysm.firebasestorage.app",
+      "apiKey": "AIzaSyBGvs7-jK2ZtI3pWkgmrkMc06Wxlx5n-IA",
+      "authDomain": "ffcscysm.firebaseapp.com",
+      "messagingSenderId": "77412571937",
+      "measurementId": "G-77D0G9ZTZF",
+      "projectNumber": "77412571937",
+      "version": "2"
+    }
+  }
+}

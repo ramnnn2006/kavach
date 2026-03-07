@@ -1,0 +1,32 @@
+﻿node.exe : - Downloading configuration 
+data of your Firebase WEB app
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" 
+"C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifie 
+   d: (- Downloading c...irebase WEB app  
+  :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeComma 
+   ndError
+ 
+Γ£ö Downloading configuration data of 
+your Firebase WEB app
+{
+  "status": "success",
+  "result": {
+    "fileName": "firebase-js-config.json",
+    "fileContents": "{\n  \"projectId\": \"kavach-app-project-123\",\n  \"appId\": \"1:696027734104:web:cf98540bc6e102253aea2d\",\n  \"storageBucket\": \"kavach-app-project-123.firebasestorage.app\",\n  \"apiKey\": \"AIzaSyAbc5UejRxNx2d4hUErcG7wvU1BRm-evBk\",\n  \"authDomain\": \"kavach-app-project-123.firebaseapp.com\",\n  \"messagingSenderId\": \"696027734104\",\n  \"projectNumber\": \"696027734104\",\n  \"version\": \"2\"\n}",
+    "sdkConfig": {
+      "projectId": "kavach-app-project-123",
+      "appId": "1:696027734104:web:cf98540bc6e102253aea2d",
+      "storageBucket": "kavach-app-project-123.firebasestorage.app",
+      "apiKey": "AIzaSyAbc5UejRxNx2d4hUErcG7wvU1BRm-evBk",
+      "authDomain": "kavach-app-project-123.firebaseapp.com",
+      "messagingSenderId": "696027734104",
+      "projectNumber": "696027734104",
+      "version": "2"
+    }
+  }
+}
