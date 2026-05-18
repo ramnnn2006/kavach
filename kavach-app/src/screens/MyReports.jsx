@@ -13,11 +13,17 @@ export default function MyReports() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [incidents, setIncidents] = useState([]);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     if (!user) return;
     return listenMyIncidents(user.uid, setIncidents);
   }, [user]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
 
   function timeAgo(ts) {
     if (!ts) return '';
@@ -34,7 +40,7 @@ export default function MyReports() {
     } else {
       date = new Date(ts);
     }
-    const mins = Math.floor((Date.now() - date.getTime()) / 60000);
+    const mins = Math.floor((now - date.getTime()) / 60000);
     if (mins < 1) return 'just now';
     if (mins < 60) return `${mins}m ago`;
     if (mins < 1440) return `${Math.floor(mins / 60)}h ago`;

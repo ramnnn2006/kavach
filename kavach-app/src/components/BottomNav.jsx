@@ -9,14 +9,14 @@ const navConfigs = {
   ],
   responder: [
     { id: 'alerts', icon: 'notifications', label: 'Alerts', path: '/responder' },
-    { id: 'active', icon: 'description', label: 'Active', path: '/responder' },
+    { id: 'active', icon: 'description', label: 'Active', path: '/responder?view=active' },
     { id: 'map', icon: 'map', label: 'Map', path: '/map' },
     { id: 'profile', icon: 'person', label: 'Profile', path: '/settings' },
   ],
   admin: [
-    { id: 'dashboard', icon: 'dashboard', label: 'Dashboard', path: '/admin' },
+    { id: 'dashboard', icon: 'dashboard', label: 'Dashboard', path: '/admin?tab=incidents' },
     { id: 'map', icon: 'map', label: 'Map', path: '/map' },
-    { id: 'power', icon: 'bolt', label: 'Power', path: '/admin' },
+    { id: 'power', icon: 'bolt', label: 'Power', path: '/admin?tab=power' },
     { id: 'profile', icon: 'person', label: 'Profile', path: '/settings' },
   ],
 };
