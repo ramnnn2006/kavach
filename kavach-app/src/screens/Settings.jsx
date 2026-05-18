@@ -16,7 +16,7 @@ export default function Settings() {
   const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
   const [largeText, setLargeText] = useState(() => document.documentElement.classList.contains('large-text'));
   const [highContrast, setHighContrast] = useState(() => document.documentElement.classList.contains('high-contrast'));
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(() => document.documentElement.classList.contains('reduce-motion'));
   const [haptic, setHaptic] = useState(true);
   const [silentSos, setSilentSos] = useState(true);
   const [shakeSos, setShakeSos] = useState(false);
@@ -72,6 +72,10 @@ export default function Settings() {
   useEffect(() => {
     document.documentElement.classList.toggle('high-contrast', highContrast);
   }, [highContrast]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('reduce-motion', reduceMotion);
+  }, [reduceMotion]);
 
 
   const handleLogout = async () => {

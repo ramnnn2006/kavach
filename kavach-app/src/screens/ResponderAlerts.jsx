@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { listenPendingIncidents, updateIncident } from '../firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import BottomNav from '../components/BottomNav';
@@ -9,13 +10,22 @@ const typeColors = { lift: '#EF4444', power: '#F59E0B', medical: '#3B82F6', fire
 const typeBgs = { lift: '#FEF2F2', power: '#FFFBEB', medical: '#EFF6FF', fire: '#FFF7ED' };
 
 export default function ResponderAlerts() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, userProfile } = useAuth();
   const [incidents, setIncidents] = useState([]);
   const [activeId, setActiveId] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
+  const view = searchParams.get('view');
 
   useEffect(() => {
     const unsub = listenPendingIncidents(setIncidents);
     return unsub;
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
   }, []);
 
   const handleAccept = async (inc) => {
@@ -39,14 +49,26 @@ export default function ResponderAlerts() {
     else if (ts instanceof Date) date = ts;
     else if (ts.seconds) date = new Date(ts.seconds * 1000);
     else date = new Date(ts);
-    const mins = Math.floor((Date.now() - date.getTime()) / 60000);
+    const mins = Math.floor((now - date.getTime()) / 60000);
     if (mins < 1) return 'just now';
     return `${mins}m ago`;
   }
 
-  if (activeId) {
-    const inc = incidents.find(i => i.id === activeId) || incidents[0];
-    if (inc) return <ResponderActive incident={inc} onBack={() => setActiveId(null)} />;
+  const activeIncidentId = activeId || (view === 'active' ? incidents[0]?.id : null);
+
+  if (activeIncidentId) {
+    const inc = incidents.find(i => i.id === activeIncidentId);
+    if (inc) {
+      return (
+        <ResponderActive
+          incident={inc}
+          onBack={() => {
+            if (view === 'active') navigate('/responder');
+            else setActiveId(null);
+          }}
+        />
+      );
+    }
   }
 
   return (
@@ -98,7 +120,7 @@ export default function ResponderAlerts() {
         </div>
       ))}
 
-      <BottomNav role="responder" active="alerts" />
+      <BottomNav role="responder" active={view === 'active' ? 'active' : 'alerts'} />
     </div>
   );
 }

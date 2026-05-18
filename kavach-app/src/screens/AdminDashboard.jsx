@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { listenIncidents, listenZones, seedZones } from '../firebase/firestore';
 import BottomNav from '../components/BottomNav';
 
@@ -15,7 +16,9 @@ const tierConfig = {
 const statusColor = { on: '#22C55E', off: '#EF4444', rotating: '#EAB308' };
 
 export default function AdminDashboard() {
-  const [tab, setTab] = useState('incidents');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const tab = ['incidents', 'map', 'power'].includes(requestedTab) ? requestedTab : 'incidents';
   const [incidents, setIncidents] = useState([]);
   const [zones, setZones] = useState([]);
   const [outageMode, setOutageMode] = useState(false);
@@ -56,7 +59,13 @@ export default function AdminDashboard() {
 
       <div className="tab-bar">
         {['incidents', 'map', 'power'].map(t => (
-          <button key={t} className={`tab-item ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
+          <button
+            key={t}
+            className={`tab-item ${tab === t ? 'active' : ''}`}
+            onClick={() => {
+              setSearchParams(t === 'incidents' ? {} : { tab: t });
+            }}
+          >
             {t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}

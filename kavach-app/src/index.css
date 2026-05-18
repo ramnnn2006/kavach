@@ -546,6 +546,14 @@ select.input-field {
   animation: fadeUp 0.3s ease-out;
 }
 
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
 /* ── Disabled Button ── */
 .btn:disabled {
   opacity: 0.5;
