@@ -14,7 +14,7 @@ const navConfigs = {
     { id: 'profile', icon: 'person', label: 'Profile', path: '/settings' },
   ],
   admin: [
-    { id: 'dashboard', icon: 'dashboard', label: 'Dashboard', path: '/admin?tab=incidents' },
+    { id: 'dashboard', icon: 'dashboard', label: 'Dashboard', path: '/admin' },
     { id: 'map', icon: 'map', label: 'Map', path: '/map' },
     { id: 'power', icon: 'bolt', label: 'Power', path: '/admin?tab=power' },
     { id: 'profile', icon: 'person', label: 'Profile', path: '/settings' },
