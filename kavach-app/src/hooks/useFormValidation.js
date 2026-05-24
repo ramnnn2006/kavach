@@ -1,5 +1,26 @@
 import { useState, useCallback } from 'react';
 
+function runSanitizer(value, rules = [], isBlur = false) {
+  if (value === null || value === undefined) return '';
+  let val = String(value);
+
+  for (const rule of rules) {
+    if (rule === 'trim' && isBlur) {
+      val = val.trim();
+    }
+    if (rule === 'strip_dangerous') {
+      val = val.replace(/[<>]/g, '');
+    }
+    if (rule === 'location') {
+      val = val.replace(/[^a-zA-Z0-9\s.,-]/g, '');
+    }
+    if (typeof rule === 'object' && rule.maxLength) {
+      val = val.slice(0, rule.maxLength);
+    }
+  }
+  return val;
+}
+
 function runValidator(value, rule) {
   if (rule === 'required') {
     return String(value).trim().length === 0 ? 'This field is required.' : null;
@@ -32,40 +53,61 @@ function validateField(value, rules = []) {
   return null;
 }
 
-function validateAll(values, validatorConfig) {
+function validateAll(values, validatorConfig, sanitizeConfig) {
   const errors = {};
+  const sanitizedValues = { ...values };
+
   for (const field in validatorConfig) {
-    const error = validateField(values[field], validatorConfig[field]);
+    // Apply blur-level sanitization before final validation
+    if (sanitizeConfig && sanitizeConfig[field]) {
+      sanitizedValues[field] = runSanitizer(values[field], sanitizeConfig[field], true);
+    }
+    const error = validateField(sanitizedValues[field], validatorConfig[field]);
     if (error) errors[field] = error;
   }
-  return errors;
+  return { errors, sanitizedValues };
 }
 
-export default function useFormValidation({ initialValues = {}, validate = {}, onSubmit }) {
+export default function useFormValidation({ initialValues = {}, validate = {}, sanitize = {}, onSubmit }) {
   const [values, setValues]   = useState({ ...initialValues });
   const [errors, setErrors]   = useState({});
   const [touched, setTouched] = useState({});
 
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
+    let sanitizedValue = value;
+    
+    if (sanitize[name]) {
+      // Run sanitizers (but skip trim during typing to allow spaces)
+      sanitizedValue = runSanitizer(value, sanitize[name], false);
+    }
+
     setValues((prev) => {
-      const next = { ...prev, [name]: value };
+      const next = { ...prev, [name]: sanitizedValue };
       setErrors((prevErr) => ({
         ...prevErr,
-        [name]: validateField(value, validate[name]),
+        [name]: validateField(sanitizedValue, validate[name]),
       }));
       return next;
     });
-  }, [validate]);
+  }, [validate, sanitize]);
 
   const handleBlur = useCallback((e) => {
     const { name, value } = e.target;
+    let sanitizedValue = value;
+
+    if (sanitize[name]) {
+      // Run all sanitizers including trim on blur
+      sanitizedValue = runSanitizer(value, sanitize[name], true);
+    }
+
+    setValues((prev) => ({ ...prev, [name]: sanitizedValue }));
     setTouched((prev) => ({ ...prev, [name]: true }));
     setErrors((prev) => ({
       ...prev,
-      [name]: validateField(value, validate[name]),
+      [name]: validateField(sanitizedValue, validate[name]),
     }));
-  }, [validate]);
+  }, [validate, sanitize]);
 
   const handleSubmit = useCallback((e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -73,12 +115,15 @@ export default function useFormValidation({ initialValues = {}, validate = {}, o
       (acc, k) => ({ ...acc, [k]: true }), {}
     );
     setTouched(allTouched);
-    const allErrors = validateAll(values, validate);
+    
+    const { errors: allErrors, sanitizedValues } = validateAll(values, validate, sanitize);
+    setValues(sanitizedValues);
     setErrors(allErrors);
+    
     if (Object.keys(allErrors).length === 0 && typeof onSubmit === 'function') {
-      onSubmit(values);
+      onSubmit(sanitizedValues);
     }
-  }, [values, validate, onSubmit, initialValues]);
+  }, [values, validate, sanitize, onSubmit, initialValues]);
 
-  return { values, errors, touched, handleChange, handleBlur, handleSubmit };
+  return { values, errors, touched, handleChange, handleBlur, handleSubmit, setValues };
 }
