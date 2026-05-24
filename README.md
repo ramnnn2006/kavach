@@ -85,7 +85,7 @@ npm run dev
 ```
 
 > The app will launch at `http://localhost:5173`.
-> _Note: In Sandbox Mode, you can use the **Developer Sandbox Panel** at the bottom of the sign-in screen to instantly log in as a **Student**, **Responder**, or **Admin** with a single click — skipping forms and credential requirements to test workspaces instantly!_
+> _Note: In Sandbox Mode, you can use the **Developer Sandbox Panel** at the bottom of the sign-in screen to instantly log in as a **Student**, **Responder**, or **Admin** with a single click, skipping forms and credential requirements to test workspaces instantly!_
 
 ---
 
