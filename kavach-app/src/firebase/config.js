@@ -3,7 +3,7 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 // ═══════════════════════════════════════════════════════
-// 🔥 Firebase Config — Connected to project: kavach-app-project-123
+// 🔥 Firebase Config - Connected to project: kavach-app-project-123
 // ═══════════════════════════════════════════════════════
 const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
 

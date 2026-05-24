@@ -69,7 +69,7 @@ export function AuthProvider({ children }) {
     return updated;
   }
 
-  // Demo mode — skip Firebase auth entirely
+  // Demo mode - skip Firebase auth entirely
   function demoLogin(role) {
     const demoProfiles = {
       student: { name: 'Anjum Sana', email: 'student@kavach.com', role: 'student', phone: '+91 98XXXXXXXX' },
