@@ -1,151 +1,168 @@
-import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { isFirebaseConfigured } from '../firebase/config';
+import React, { useState } from 'react';
+import useFormValidation from '../hooks/useFormValidation';
+import { useToast } from '../context/ToastContext';
 
-export default function Login() {
-  const { login, signup, demoLogin } = useAuth();
-  const navigate = useNavigate();
-  const [role, setRole] = useState('student');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [error, setError] = useState('');
-  const [isSignup, setIsSignup] = useState(false);
-  const [name, setName] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+function getPasswordStrength(password) {
+  if (!password) return { label: '', score: 0, color: 'var(--border)' };
+  let score = 0;
+  if (password.length >= 8) score += 1;
+  if (password.match(/[A-Z]/)) score += 1;
+  if (password.match(/[0-9]/)) score += 1;
+  if (password.match(/[^A-Za-z0-9]/)) score += 1;
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSubmitting(true);
-    try {
-      let profile;
-      if (isSignup) {
-        profile = await signup(email, password, name, 'student');
-      } else {
-        profile = await login(email, password);
+  if (score < 2) return { label: 'Weak', score, color: 'var(--sos-red)' };
+  if (score < 4) return { label: 'Medium', score, color: 'var(--sos-amber)' };
+  return { label: 'Strong', score, color: 'var(--success)' };
+}
+
+export default function Login({ onLoginSuccess }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const { showToast } = useToast();
+
+  const { values, errors, touched, handleChange, handleBlur, handleSubmit } = useFormValidation({
+    initialValues: { email: '', password: '' },
+    validate: {
+      email: ['required', 'email'],
+      password: ['required', { minLength: 8 }]
+    },
+    onSubmit: async () => {
+      setIsLoading(true);
+      try {
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        setShowRoleModal(true);
+      } catch (err) {
+        showToast('Login failed. Please check your credentials.', 'error');
+      } finally {
+        setIsLoading(false);
       }
-      // Navigate based on the actual profile role from Firestore
-      const targetRole = profile?.role || role;
-      navigate(`/${targetRole}`);
-    } catch (err) {
-      // Map Firebase error codes to user-friendly messages
-      const code = err.code || '';
-      const messages = {
-        'auth/invalid-credential': 'Invalid email or password. Please try again.',
-        'auth/user-not-found': 'No account found with this email. Sign up first!',
-        'auth/wrong-password': 'Incorrect password. Please try again.',
-        'auth/email-already-in-use': 'This email is already registered. Try logging in.',
-        'auth/weak-password': 'Password must be at least 6 characters.',
-        'auth/invalid-email': 'Please enter a valid email address.',
-        'auth/too-many-requests': 'Too many attempts. Please try again later.',
-        'auth/network-request-failed': 'Network error. Check your internet connection.',
-      };
-      setError(messages[code] || err.message);
-    } finally {
-      setSubmitting(false);
     }
-  };
+  });
 
-  const handleDemo = () => {
-    demoLogin(role);
-    navigate(`/${role}`);
+  const strength = getPasswordStrength(values.password);
+  const isEmailValid = values.email && !errors.email;
+  const isFormValid = values.email && values.password && Object.keys(errors).length === 0;
+
+  const handleRoleSelect = (role) => {
+    setShowRoleModal(false);
+    showToast(`Logged in as ${role}`, 'success');
+    if (onLoginSuccess) onLoginSuccess(role);
   };
 
   return (
-    <div className="page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingBottom: '2rem', minHeight: '100dvh' }}>
-      <div style={{ width: '100%', maxWidth: '24rem' }}>
-        <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-          <div style={{ width: '4rem', height: '4rem', border: '2px solid var(--text-main)', borderRadius: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
-            <span className="material-symbols-outlined notranslate notranslate" style={{ fontSize: '2rem' }}>shield</span>
-          </div>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 700, letterSpacing: '-0.025em', textTransform: 'uppercase' }}>KAVACH</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 500, marginTop: '0.25rem' }}>Campus Emergency Management</p>
-          {isFirebaseConfigured && (
-            <div className="badge badge-green" style={{ marginTop: '0.75rem' }}>
-              <span style={{ width: '0.375rem', height: '0.375rem', borderRadius: '50%', background: '#22C55E' }} />
-              Firebase Connected
-            </div>
-          )}
+    <div className="page fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', padding: '1.5rem' }}>
+      <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '2rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <h1 className="page-title">Welcome Back</h1>
+          <p className="page-subtitle">Enter your credentials to access Kavach</p>
         </div>
 
-        {isSignup && (
-          <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
-            <span className="badge badge-gray">Sign Up as Student</span>
-            <p style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Admins and Responders must be authorized by campus IT.</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          {isSignup && (
-            <div className="input-group">
-              <span className="material-symbols-outlined notranslate notranslate">person</span>
-              <input className="input-field" type="text" placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} required />
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div>
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <span className="material-symbols-outlined">mail</span>
+              <input
+                type="email"
+                name="email"
+                className="input-field"
+                placeholder="Email Address"
+                value={values.email}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                disabled={isLoading}
+              />
+              {isEmailValid && (
+                <span className="material-symbols-outlined" style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--success)', pointerEvents: 'none' }}>
+                  check_circle
+                </span>
+              )}
             </div>
-          )}
-          <div className="input-group">
-            <span className="material-symbols-outlined notranslate notranslate">mail</span>
-            <input className="input-field" type="email" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} required />
-          </div>
-          <div className="input-group" style={{ position: 'relative' }}>
-            <span className="material-symbols-outlined notranslate notranslate">lock</span>
-            <input className="input-field" type={showPass ? 'text' : 'password'} placeholder="Password (min 6 chars)" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} style={{ paddingRight: '3rem' }} />
-            <button type="button" onClick={() => setShowPass(!showPass)} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-              <span className="material-symbols-outlined notranslate notranslate" style={{ fontSize: '1.25rem' }}>{showPass ? 'visibility_off' : 'visibility'}</span>
-            </button>
-          </div>
-
-          {error && (
-            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '0.75rem', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span className="material-symbols-outlined notranslate notranslate" style={{ fontSize: '1.125rem', color: '#DC2626' }}>error</span>
-              <p style={{ color: '#DC2626', fontSize: '0.75rem', fontWeight: 500 }}>{error}</p>
-            </div>
-          )}
-
-          <button type="submit" className="btn btn-primary" style={{ marginBottom: '1rem' }} disabled={submitting}>
-            {submitting ? (
-              <>
-                <span className="material-symbols-outlined notranslate notranslate" style={{ fontSize: '1.125rem', animation: 'spin 1s linear infinite' }}>progress_activity</span>
-                {isSignup ? 'Creating...' : 'Signing in...'}
-              </>
-            ) : (
-              <>
-                {isSignup ? 'Create Account' : 'Login'}
-                <span className="material-symbols-outlined notranslate notranslate" style={{ fontSize: '1.125rem' }}>arrow_forward</span>
-              </>
+            {touched.email && errors.email && (
+              <p style={{ color: 'var(--sos-red)', fontSize: '0.75rem', marginTop: '0.25rem', paddingLeft: '1rem', fontWeight: '500' }}>
+                {errors.email}
+              </p>
             )}
+          </div>
+
+          <div>
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <span className="material-symbols-outlined">lock</span>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                className="input-field"
+                placeholder="Password"
+                value={values.password}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                disabled={isLoading}
+                style={{ paddingRight: '3rem' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)'
+                }}
+              >
+                <span className="material-symbols-outlined">{showPassword ? 'visibility_off' : 'visibility'}</span>
+              </button>
+            </div>
+            
+            {values.password.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', paddingLeft: '1rem' }}>
+                <div style={{ flex: 1, height: '4px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${(strength.score / 4) * 100}%`, background: strength.color, transition: 'all 0.3s ease' }} />
+                </div>
+                <span style={{ fontSize: '0.7rem', color: strength.color, fontWeight: '700' }}>{strength.label}</span>
+              </div>
+            )}
+
+            {touched.password && errors.password && (
+              <p style={{ color: 'var(--sos-red)', fontSize: '0.75rem', marginTop: '0.25rem', paddingLeft: '1rem', fontWeight: '500' }}>
+                {errors.password}
+              </p>
+            )}
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
+              <button type="button" style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer' }}>
+                Forgot Password?
+              </button>
+            </div>
+          </div>
+
+          <button 
+            type="submit" 
+            className={`btn btn-primary ${isLoading ? 'loading' : ''}`}
+            disabled={!isFormValid || isLoading}
+            style={{ marginTop: '0.5rem' }}
+          >
+            Sign In
           </button>
         </form>
+      </div>
 
-        <p style={{ textAlign: 'center', fontSize: '0.875rem', marginBottom: '2rem' }}>
-          <span style={{ color: 'var(--text-muted)' }}>{isSignup ? 'Already have an account?' : 'New to the platform?'}</span>
-          <button onClick={() => { setIsSignup(!isSignup); setError(''); }} style={{ color: 'var(--primary)', fontWeight: 700, border: 'none', background: 'none', cursor: 'pointer', marginLeft: '0.25rem', fontFamily: 'inherit' }}>
-            {isSignup ? 'Login' : 'Create Account'}
-          </button>
-        </p>
-
-        <div style={{ display: 'flex', alignItems: 'center', margin: '1.5rem 0' }}>
-          <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
-          <span style={{ padding: '0 1rem', fontSize: '0.625rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>Or quick demo</span>
-          <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
-        </div>
-
-        <div style={{ marginBottom: '1rem' }}>
-          <div className="role-picker">
-            {['student', 'responder', 'admin'].map(r => (
-              <button key={r} type="button" className={`role-btn ${role === r ? 'active' : ''}`} onClick={() => setRole(r)}>
-                {r}
-              </button>
-            ))}
+      {showRoleModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.6)', zIndex: 100,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(8px)', padding: '1.5rem'
+        }}>
+          <div className="glass-card fade-up" style={{ width: '100%', maxWidth: '340px', padding: '2rem', textAlign: 'center' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '0.5rem' }}>Select Role</h2>
+            <p className="page-subtitle" style={{ marginBottom: '1.5rem' }}>Choose your view for testing</p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <button className="btn btn-outline" onClick={() => handleRoleSelect('Student')}>🎓 Student</button>
+              <button className="btn btn-outline" onClick={() => handleRoleSelect('Responder')}>🛡️ Responder</button>
+              <button className="btn btn-outline" onClick={() => handleRoleSelect('Admin')}>🏫 Admin</button>
+            </div>
           </div>
         </div>
-
-        <button type="button" className="btn btn-outline" onClick={handleDemo}>
-          <span className="material-symbols-outlined notranslate notranslate" style={{ fontSize: '1.125rem' }}>play_arrow</span>
-          Demo as {role}
-        </button>
-      </div>
+      )}
     </div>
   );
 }
