@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { auth, isFirebaseConfigured } from '../firebase/config';
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
 import { setUserProfile, getUserProfile } from '../firebase/firestore';
 
 const AuthContext = createContext(null);
@@ -69,6 +69,11 @@ export function AuthProvider({ children }) {
     return updated;
   }
 
+  async function resetPassword(email) {
+    if (!isFirebaseConfigured) throw new Error('Firebase not configured. Use Demo mode instead.');
+    await sendPasswordResetEmail(auth, email);
+  }
+
   // Demo mode - skip Firebase auth entirely
   function demoLogin(role) {
     const demoProfiles = {
@@ -82,7 +87,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, login, signup, logout, demoLogin, updateProfileLocally, isFirebaseConfigured }}>
+    <AuthContext.Provider value={{ user, userProfile, loading, login, signup, logout, demoLogin, updateProfileLocally, resetPassword, isFirebaseConfigured }}>
       {children}
     </AuthContext.Provider>
   );

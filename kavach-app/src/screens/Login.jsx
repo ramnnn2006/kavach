@@ -16,7 +16,7 @@ function getPasswordStrength(password) {
 }
 
 export default function Login({ onLoginSuccess }) {
-  const { login, signup, demoLogin, isFirebaseConfigured } = useAuth();
+  const { login, signup, demoLogin, resetPassword, isFirebaseConfigured } = useAuth();
   const { showToast } = useToast();
 
   // Onboarding vs Form views
@@ -161,6 +161,34 @@ export default function Login({ onLoginSuccess }) {
     } catch (err) {
       console.error(err);
       showToast('Demo login failed.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      showToast('Please enter your email address in the field above first.', 'error');
+      return;
+    }
+    const emailErr = validateField('email', formData.email);
+    if (emailErr) {
+      showToast('Please enter a valid email address.', 'error');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      if (isFirebaseConfigured) {
+        await resetPassword(formData.email);
+        showToast('Password reset link sent to your email!', 'success');
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        showToast(`Demo Mode: Password reset link simulated successfully for ${formData.email}!`, 'success');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast(err.message || 'Failed to send password reset email.', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -375,7 +403,12 @@ export default function Login({ onLoginSuccess }) {
             
             {activeTab === 'signin' && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
-                <button type="button" style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer' }}>
+                <button 
+                  type="button" 
+                  onClick={handleForgotPassword}
+                  disabled={isLoading}
+                  style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer' }}
+                >
                   Forgot Password?
                 </button>
               </div>
