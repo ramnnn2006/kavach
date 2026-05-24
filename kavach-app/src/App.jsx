@@ -58,6 +58,7 @@ function AppRoutes() {
     <div style={{ maxWidth: '430px', margin: '0 auto', minHeight: '100dvh', position: 'relative', background: 'var(--bg)' }}>
       <ConnectionBanner />
       <Routes>
+        <Route path="/" element={<Navigate to={user ? defaultRoute : "/login"} replace />} />
         <Route path="/login" element={user ? <Navigate to={defaultRoute} replace /> : <Login />} />
 
         {/* Student Routes */}
