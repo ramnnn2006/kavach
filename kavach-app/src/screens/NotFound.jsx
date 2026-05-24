@@ -74,17 +74,17 @@ export default function NotFound() {
 
         {/* 404 Badge */}
         <div style={{ display: 'inline-block', padding: '0.25rem 0.75rem', borderRadius: '9999px', background: 'rgba(239, 68, 68, 0.12)', color: 'var(--sos-red)', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.05em', marginBottom: '1rem', textTransform: 'uppercase' }}>
-          Error Code: 404
+          404 Error
         </div>
 
         {/* Headline */}
         <h1 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.75rem', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
-          Area Unsecured
+          Page Not Found
         </h1>
 
         {/* Description */}
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: '2rem' }}>
-          You have wandered outside the secured perimeter. This page does not exist or has been relocated for safety protocols.
+          The page you are trying to access doesn't exist. It might have been moved or deleted.
         </p>
 
         {/* Action Button */}
@@ -93,14 +93,14 @@ export default function NotFound() {
           className="btn btn-primary"
           style={{ background: 'var(--primary)', boxShadow: '0 4px 14px rgba(59, 130, 246, 0.2)' }}
         >
-          <span className="material-symbols-outlined notranslate" style={{ fontSize: '1.25rem' }}>shield</span>
-          Return to Safety
+          <span className="material-symbols-outlined notranslate" style={{ fontSize: '1.25rem' }}>home</span>
+          Back to Dashboard
         </button>
       </div>
 
       {/* Small footer */}
       <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2rem', fontWeight: 500, letterSpacing: '0.05em' }}>
-        KAVACH APP SECURITY CENTER
+        KAVACH SAFETY
       </p>
     </div>
   );
