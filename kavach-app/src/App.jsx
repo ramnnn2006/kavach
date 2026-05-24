@@ -16,6 +16,7 @@ import AdminDashboard from './screens/AdminDashboard';
 import Settings from './screens/Settings';
 import CampusMap from './screens/CampusMap';
 import NotFound from './screens/NotFound';
+import LandingPage from './screens/LandingPage';
 
 /**
  * Higher-order component to protect routes based on authentication and roles.
@@ -58,7 +59,7 @@ function AppRoutes() {
     <div style={{ maxWidth: '430px', margin: '0 auto', minHeight: '100dvh', position: 'relative', background: 'var(--bg)' }}>
       <ConnectionBanner />
       <Routes>
-        <Route path="/" element={<Navigate to={user ? defaultRoute : "/login"} replace />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={user ? <Navigate to={defaultRoute} replace /> : <Login />} />
 
         {/* Student Routes */}
