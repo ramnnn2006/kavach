@@ -27,3 +27,17 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Temp/scratch files that may contain secrets (MCP tool artifacts etc.)
+*.tmp
+*.temp
+
+# Firebase CLI artifacts (may contain API keys)
+firebase_*.tmp
+
+# Secret / credential files — never commit these
+secrets.json
+credentials.json
+service-account*.json
+*-service-account*.json
+stitch_mcp.json
