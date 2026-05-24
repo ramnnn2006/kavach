@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import useFormValidation from '../hooks/useFormValidation';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 
 function getPasswordStrength(password) {
   if (!password) return { label: '', score: 0, color: 'var(--border)' };
@@ -16,6 +17,7 @@ function getPasswordStrength(password) {
 }
 
 export default function Login({ onLoginSuccess }) {
+  const { login, demoLogin, isFirebaseConfigured, updateProfileLocally } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -30,10 +32,16 @@ export default function Login({ onLoginSuccess }) {
     onSubmit: async () => {
       setIsLoading(true);
       try {
-        await new Promise(resolve => setTimeout(resolve, 1200));
+        if (isFirebaseConfigured) {
+          await login(values.email, values.password);
+        } else {
+          // Fake network delay in demo mode
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
         setShowRoleModal(true);
       } catch (err) {
-        showToast('Login failed. Please check your credentials.', 'error');
+        console.error(err);
+        showToast(err.message || 'Login failed. Please check your credentials.', 'error');
       } finally {
         setIsLoading(false);
       }
@@ -44,10 +52,23 @@ export default function Login({ onLoginSuccess }) {
   const isEmailValid = values.email && !errors.email;
   const isFormValid = values.email && values.password && Object.keys(errors).length === 0;
 
-  const handleRoleSelect = (role) => {
+  const handleRoleSelect = async (role) => {
     setShowRoleModal(false);
-    showToast(`Logged in as ${role}`, 'success');
-    if (onLoginSuccess) onLoginSuccess(role);
+    setIsLoading(true);
+    try {
+      if (isFirebaseConfigured) {
+        await updateProfileLocally({ role });
+      } else {
+        demoLogin(role.toLowerCase());
+      }
+      showToast(`Logged in successfully as ${role}`, 'success');
+      if (onLoginSuccess) onLoginSuccess(role);
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to set user role.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
