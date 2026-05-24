@@ -15,6 +15,7 @@ import ResponderAlerts from './screens/ResponderAlerts';
 import AdminDashboard from './screens/AdminDashboard';
 import Settings from './screens/Settings';
 import CampusMap from './screens/CampusMap';
+import NotFound from './screens/NotFound';
 
 /**
  * Higher-order component to protect routes based on authentication and roles.
@@ -76,7 +77,7 @@ function AppRoutes() {
         <Route path="/map" element={<ProtectedRoute><CampusMap /></ProtectedRoute>} />
 
         {/* Fallback */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </div>
   );

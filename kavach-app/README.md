@@ -1,42 +1,45 @@
 # Kavach 🛡️
-> Real-time, role-based campus emergency management and safety application.
+> Real-time, role-based campus emergency management and safety network.
 
 ## ✨ Key Features
-- **One-Tap Emergency Reporting**: Instantly report incidents (fire, medical, security) with precise location tracking.
-- **Role-Based Dashboards**: Tailored interfaces for Students (reporting), Responders (action), and Admins (oversight).
-- **Real-Time Synchronization**: Live updates powered by Firebase Firestore for immediate incident broadcasting.
-- **Network Resilient**: Offline banner detection and robust local caching for poor campus networks.
-- **Form Sanitization & Security**: Built-in validators prevent duplicate reports, spam, and dangerous payload injections.
+- **Interactive Onboarding Walkthrough**: Step-by-step swipeable tutorial covering key safety features, with smooth transitions, pagination progress, and memory of completion.
+- **Unified Sign In & Account Registration**: Support for both Sign In and Sign Up modes. Features a context-aware **Password Strength Meter** active exclusively during registration.
+- **Developer Demo Sandbox**: Prominent one-click sandbox entry, letting developers instantly test the Student, Responder, or Admin workspaces without entering credentials or forms.
+- **One-Tap Emergency Reporting**: Instantly report high-priority campus incidents (fire, medical, elevator, power outage) with active telemetry.
+- **Role-Based Dynamic Workspaces**: Tailored visual dashboards for Students (reporting & timeline tracker), Responders (alerts & dispatch flow), and Admins (campus overview & stats).
+- **Network Resilience Banner**: High-priority offline status tracking to warn users about signal dropouts.
+- **Glassmorphic 404 Safety Zone**: An elegant "Area Unsecured" 404 handler that automatically routes users back to their active workspace based on their current auth state and role.
 
 ## 📸 Screenshots
 *(Insert GIF here)*
 
 ## 🛠️ Tech Stack
-- **Frontend**: React (Vite), Context API, CSS Variables (Dark/Light mode)
+- **Frontend**: React (Vite), Context API, CSS Variables (Harmonious Dark/Light & High-contrast themes)
 - **Backend & DB**: Firebase Authentication & Cloud Firestore
-- **Routing**: React Router DOM
+- **Routing**: React Router DOM (v6)
 
 ## 🚀 Setup & Installation
-1. Clone the repository and navigate to the project directory.
+1. Clone the repository and navigate to the project directory:
+   ```bash
+   cd kavach-app
+   ```
 2. Install dependencies:
    ```bash
    npm install
    ```
-3. Set up environment variables by copying `.env.example` to `.env` and adding your Firebase credentials.
+3. Set up environment variables by copying `.env.example` to `.env` and adding your Firebase credentials. (If left unconfigured, Kavach automatically enables its fully-featured Local Sandbox Demo mode).
 4. Start the development server:
    ```bash
    npm run dev
    ```
 
-## 🧪 Testing as Different Roles
-The Login screen includes a built-in mock role selector. Upon successful authentication, you can choose to enter the app as a **Student**, **Responder**, or **Admin** to test role-specific functionalities without needing multiple test accounts.
+## 🧪 Dynamic Sandbox Testing
+No database credentials? No problem! If Kavach detects that your Firebase API keys are absent, it automatically boots into **Demo Sandbox Mode**.
+* You can register a mock account under the **Register** tab.
+* Or, you can use the **Developer Sandbox Panel** at the bottom of the sign-in screen to instantly log in as a **Student**, **Responder**, or **Admin** with a single click.
 
 ## 🏗️ Architecture
-Kavach uses a lightweight, Context-driven architecture. Global states like `Auth`, `Toast`, and `Dialog` are managed via React Context providers at the root level (`App.jsx`). Firestore listeners are attached cleanly via custom hooks (`useNetworkStatus`, `useFormValidation`) to ensure UI components remain declarative and decoupled from raw database logic.
-
-## ⚠️ Known Limitations
-- Push notifications require active APNs/FCM keys which are not included in the public repository.
-- While the UI gracefully handles offline states, full offline creation of reports (syncing once reconnected) is pending implementation.
+Kavach is designed around a lightweight, Context-driven structure. Global states like `AuthContext`, `ToastContext`, and `DialogContext` wrap the main `AppRoutes` tree at the root (`App.jsx`). Firestore triggers and network listeners are managed through clean hooks (`useNetworkStatus`, `useFormValidation`) to guarantee highly declarative, performant updates.
 
 ## 🌐 Deployment
-Kavach is optimized for deployment on [Vercel](https://vercel.com). Connect your repository, set the build command to `npm run build`, and add the Firebase configuration to your Vercel Environment Variables.
+Kavach is fully optimized for quick deployment on [Vercel](https://vercel.com). Simply configure the build commands to `npm run build` and append your Firebase variables to the Vercel project configuration.
