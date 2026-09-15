@@ -2,7 +2,7 @@ import { db, isFirebaseConfigured } from './config';
 import {
   collection, doc, addDoc, updateDoc,
   query, where, orderBy, onSnapshot, serverTimestamp,
-  getDoc, getDocs, setDoc, Timestamp
+  getDoc, getDocs, setDoc, Timestamp, runTransaction
 } from 'firebase/firestore';
 
 // ── Firestore refs ──
@@ -25,7 +25,7 @@ function notifyDemoListeners() {
 // ── Incidents ──
 export function createIncident(data) {
   if (!isFirebaseConfigured) {
-    const newInc = { id: `demo-${Date.now()}`, ...data, createdAt: Timestamp.fromDate(new Date()), acknowledgedAt: null, resolvedAt: null, status: 'pending', escalationLevel: 1, assignedResponder: null, assignedResponderName: null };
+    const newInc = { id: `demo-${Date.now()}`, ...data, createdAt: serverTimestamp(), acknowledgedAt: null, resolvedAt: null, status: 'pending', escalationLevel: 1, assignedResponder: null, assignedResponderName: null };
     demoIncidents = [newInc, ...demoIncidents];
     notifyDemoListeners();
     return Promise.resolve({ id: newInc.id });
@@ -192,4 +192,44 @@ export async function seedZones() {
   } catch (err) {
     console.error('Error seeding zones:', err);
   }
+}
+
+// ── Atomic Operations ──
+export async function claimIncident(incidentId, responderUid, responderName) {
+  if (!isFirebaseConfigured) {
+    demoIncidents = demoIncidents.map(i => i.id === incidentId && i.status === 'pending' ? { ...i, status: 'acknowledged', assignedResponder: responderUid, assignedResponderName: responderName, acknowledgedAt: new Date() } : i);
+    notifyDemoListeners();
+    return Promise.resolve();
+  }
+  const incRef = doc(db, 'incidents', incidentId);
+  try {
+    await runTransaction(db, async (transaction) => {
+      const incDoc = await transaction.get(incRef);
+      if (!incDoc.exists()) throw "Document does not exist!";
+      if (incDoc.data().status !== 'pending') throw "Incident already claimed!";
+      
+      transaction.update(incRef, {
+        status: 'acknowledged',
+        assignedResponder: responderUid,
+        assignedResponderName: responderName,
+        acknowledgedAt: serverTimestamp()
+      });
+    });
+  } catch (e) {
+    console.error("Transaction failed: ", e);
+    throw e;
+  }
+}
+
+export async function updateIncidentStatus(incidentId, newStatus) {
+  if (!isFirebaseConfigured) {
+    demoIncidents = demoIncidents.map(i => i.id === incidentId ? { ...i, status: newStatus, ...(newStatus === 'resolved' ? { resolvedAt: new Date() } : {}) } : i);
+    notifyDemoListeners();
+    return Promise.resolve();
+  }
+  const updates = { status: newStatus };
+  if (newStatus === 'resolved') updates.resolvedAt = serverTimestamp();
+  
+  const incRef = doc(db, 'incidents', incidentId);
+  return updateDoc(incRef, updates);
 }
