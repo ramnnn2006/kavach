@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/DialogContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Settings({ userRole = 'Student', onLogout }) {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const { logout } = useAuth();
 
   // Local state for toggles
   const [darkMode, setDarkMode] = useState(
@@ -65,9 +67,9 @@ export default function Settings({ userRole = 'Student', onLogout }) {
       'Are you sure you want to log out of Kavach?'
     );
     if (confirmed) {
-      // Clear auth data logic here
+      await logout();
       showToast('Logged out.', 'info');
-      if (onLogout) onLogout();
+      if (onLogout) await onLogout();
     }
   };
 

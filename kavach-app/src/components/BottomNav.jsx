@@ -41,7 +41,7 @@ export default function BottomNav({ role, active }) {
           </button>
         ))}
       </nav>
-      <div style={{ position: 'fixed', bottom: '0.375rem', left: '50%', transform: 'translateX(-50%)', width: '9rem', height: '0.3125rem', background: '#CBD5E1', borderRadius: '9999px', zIndex: 50 }} />
+      <div className="ios-home-indicator" style={{ position: 'fixed', bottom: '0.375rem', left: '50%', transform: 'translateX(-50%)', width: '9rem', height: '0.3125rem', background: 'var(--text-main)', borderRadius: '9999px', zIndex: 50 }} />
     </>
   );
 }

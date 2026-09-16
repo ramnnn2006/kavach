@@ -1,211 +1,109 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { listenPendingIncidents, updateIncident } from '../firebase/firestore';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { listenIncidents, claimIncident, updateIncidentStatus } from '../firebase/firestore';
 import BottomNav from '../components/BottomNav';
-import { Timestamp } from 'firebase/firestore';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 const typeIcons = { lift: 'elevator', power: 'bolt', medical: 'medical_services', fire: 'local_fire_department' };
-const typeColors = { lift: '#EF4444', power: '#F59E0B', medical: '#3B82F6', fire: '#F97316' };
-const typeBgs = { lift: '#FEF2F2', power: '#FFFBEB', medical: '#EFF6FF', fire: '#FFF7ED' };
+const typeColors = { lift: 'var(--sos-red)', power: 'var(--sos-amber)', medical: 'var(--primary)', fire: 'var(--sos-orange)' };
 
 export default function ResponderAlerts() {
-  const navigate = useNavigate();
+  const { userProfile } = useAuth();
   const [searchParams] = useSearchParams();
-  const { user, userProfile } = useAuth();
+  const view = searchParams.get('view') || 'alerts';
   const [incidents, setIncidents] = useState([]);
-  const [activeId, setActiveId] = useState(null);
-  const [now, setNow] = useState(() => Date.now());
-  const view = searchParams.get('view');
+  const [dialog, setDialog] = useState(null);
 
   useEffect(() => {
-    const unsub = listenPendingIncidents(setIncidents);
-    return unsub;
+    return listenIncidents(setIncidents);
   }, []);
 
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 60000);
-    return () => clearInterval(timer);
-  }, []);
+  const openAlerts = incidents.filter(i => i.status === 'pending');
+  const activeAlerts = incidents.filter(i => i.status !== 'pending' && i.status !== 'resolved' && i.assignedResponder === userProfile?.uid);
 
-  const handleAccept = async (inc) => {
-    try {
-      await updateIncident(inc.id, {
-        status: 'acknowledged',
-        assignedResponder: user?.uid || 'demo-responder',
-        assignedResponderName: userProfile?.name || 'Rajesh Kumar',
-        acknowledgedAt: Timestamp.fromDate(new Date()),
-      });
-    } catch (err) {
-      console.error('Error accepting incident:', err);
-    }
-    setActiveId(inc.id);
+  const handleClaim = (inc) => {
+    setDialog({
+      title: 'Claim Incident',
+      message: `You are taking responsibility for the ${inc.type} at ${inc.locationZone}. Proceed?`,
+      onConfirm: async () => {
+        await claimIncident(inc.id, userProfile.uid, userProfile.name);
+        setDialog(null);
+      },
+      onCancel: () => setDialog(null)
+    });
   };
 
-  function timeAgo(ts) {
-    if (!ts) return '';
-    let date;
-    if (ts.toDate && typeof ts.toDate === 'function') date = ts.toDate();
-    else if (ts instanceof Date) date = ts;
-    else if (ts.seconds) date = new Date(ts.seconds * 1000);
-    else date = new Date(ts);
-    const mins = Math.floor((now - date.getTime()) / 60000);
-    if (mins < 1) return 'just now';
-    return `${mins}m ago`;
-  }
-
-  const activeIncidentId = activeId || (view === 'active' ? incidents[0]?.id : null);
-
-  if (activeIncidentId) {
-    const inc = incidents.find(i => i.id === activeIncidentId);
-    if (inc) {
-      return (
-        <ResponderActive
-          incident={inc}
-          onBack={() => {
-            if (view === 'active') navigate('/responder');
-            else setActiveId(null);
-          }}
-        />
-      );
-    }
-  }
+  const handleStatusUpdate = async (incId, newStatus) => {
+    if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+    await updateIncidentStatus(incId, newStatus);
+  };
 
   return (
-    <div className="page fade-up">
-      <div className="page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span className="material-symbols-outlined notranslate notranslate" style={{ fontSize: '1.5rem' }}>shield</span>
-          <div>
-            <h1 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Kavach Responder</h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: '0.125rem' }}>
-              <span style={{ width: '0.5rem', height: '0.5rem', borderRadius: '50%', background: '#22C55E' }} />
-              <span style={{ fontSize: '0.75rem', color: '#22C55E', fontWeight: 600 }}>Online</span>
+    <div className="page" style={{ padding: '24px 20px', paddingTop: 'calc(env(safe-area-inset-top) + 24px)' }}>
+      <div className="page-header" style={{ marginBottom: '24px' }}>
+        <div>
+          <p style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>Responder View</p>
+          <h1 style={{ fontSize: '32px', fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>{view === 'alerts' ? 'Incoming Alerts' : 'Active Tasks'}</h1>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '16px', flexDirection: 'column', marginBottom: '80px' }}>
+        {(view === 'alerts' ? openAlerts : activeAlerts).length === 0 && (
+          <div className="glass-card" style={{ padding: '40px 20px', textAlign: 'center', background: 'var(--card-bg)' }}>
+            <span className="material-symbols-outlined notranslate" style={{ fontSize: '48px', color: 'var(--text-muted)', marginBottom: '16px' }}>check_circle</span>
+            <p style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 8px 0' }}>All Clear</p>
+            <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: 0 }}>No {view === 'alerts' ? 'incoming emergencies' : 'active tasks'} at the moment.</p>
+          </div>
+        )}
+
+        {(view === 'alerts' ? openAlerts : activeAlerts).map(inc => (
+          <div key={inc.id} className="glass-card" style={{ padding: '20px', borderLeft: `6px solid ${typeColors[inc.type]}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: typeColors[inc.type], textTransform: 'uppercase', letterSpacing: '1px' }}>{inc.type}</span>
+                <p style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0 0' }}>{inc.locationBuilding}</p>
+                <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>{inc.locationZone} • {inc.locationFloor}</p>
+              </div>
+              <div style={{ background: `${typeColors[inc.type]}15`, padding: '12px', borderRadius: '16px' }}>
+                <span className="material-symbols-outlined notranslate" style={{ color: typeColors[inc.type], fontSize: '28px' }}>{typeIcons[inc.type]}</span>
+              </div>
             </div>
-          </div>
-        </div>
-      </div>
+            
+            <p style={{ fontSize: '14px', margin: '0 0 20px 0', lineHeight: 1.5 }}>"{inc.description}"</p>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-        <span className="section-label" style={{ margin: 0 }}>Active Alerts</span>
-        <span className="badge badge-red">{incidents.length}</span>
-      </div>
-
-      {incidents.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-          <span className="material-symbols-outlined notranslate notranslate" style={{ fontSize: '3rem', color: 'var(--success)', marginBottom: '1rem', display: 'block' }}>verified</span>
-          <p style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.5rem' }}>All Clear</p>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No active alerts. Stand by for incoming incidents.</p>
-        </div>
-      )}
-
-      {incidents.map((inc, i) => (
-        <div key={inc.id} className={`incident-card fade-up ${inc.urgencyScore >= 70 ? 'critical' : inc.urgencyScore >= 50 ? 'high' : 'medium'}`} style={{ animationDelay: `${i * 0.1}s` }}>
-          <div className="incident-icon" style={{ background: typeBgs[inc.type] }}>
-            <span className="material-symbols-outlined notranslate notranslate" style={{ color: typeColors[inc.type] }}>{typeIcons[inc.type]}</span>
-          </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontWeight: 700, fontSize: '0.875rem', textTransform: 'capitalize' }}>{inc.type} — {inc.locationZone}</p>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{inc.peopleAffected} affected · {timeAgo(inc.createdAt)}</p>
-            {inc.escalationLevel >= 2 && (
-              <span className="badge badge-amber" style={{ marginTop: '0.5rem' }}>⚠️ ESCALATING</span>
+            {view === 'alerts' ? (
+              <button style={{ width: '100%', background: 'var(--text-main)', color: 'var(--bg)', borderRadius: '14px', padding: '16px', fontSize: '16px', fontWeight: 700 }} onClick={() => handleClaim(inc)}>
+                Accept Task
+              </button>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <button 
+                  style={{ background: inc.status === 'en_route' ? 'var(--primary)' : 'var(--card-border)', color: inc.status === 'en_route' ? '#fff' : 'var(--text-main)' }} 
+                  onClick={() => handleStatusUpdate(inc.id, 'en_route')}
+                >
+                  En Route
+                </button>
+                <button 
+                  style={{ background: inc.status === 'on_scene' ? 'var(--sos-amber)' : 'var(--card-border)', color: inc.status === 'on_scene' ? '#fff' : 'var(--text-main)' }} 
+                  onClick={() => handleStatusUpdate(inc.id, 'on_scene')}
+                >
+                  On Scene
+                </button>
+                <button 
+                  style={{ gridColumn: 'span 2', background: 'var(--success)', color: '#fff', marginTop: '8px' }} 
+                  onClick={() => handleStatusUpdate(inc.id, 'resolved')}
+                >
+                  Mark Resolved
+                </button>
+              </div>
             )}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-            <span className="badge" style={{ background: inc.urgencyScore >= 70 ? '#FEF2F2' : '#FFFBEB', color: inc.urgencyScore >= 70 ? '#DC2626' : '#D97706' }}>{inc.urgencyScore}</span>
-            <button className="btn btn-primary" style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.6875rem', textTransform: 'uppercase' }} onClick={() => handleAccept(inc)}>
-              Accept
-            </button>
-          </div>
-        </div>
-      ))}
-
-      <BottomNav role="responder" active={view === 'active' ? 'active' : 'alerts'} />
-    </div>
-  );
-}
-
-function ResponderActive({ incident, onBack }) {
-  const [status, setStatus] = useState(incident?.status === 'acknowledged' ? 'acknowledged' : 'acknowledged');
-
-  const statusFlow = [
-    { key: 'en_route', label: '🚶 Mark En Route', cls: 'btn-amber' },
-    { key: 'on_scene', label: '📍 On Scene', cls: 'btn-primary' },
-    { key: 'resolved', label: '✅ Mark Resolved', cls: 'btn-success' },
-  ];
-
-  const currentIdx = status === 'acknowledged' ? 0 : status === 'en_route' ? 1 : status === 'on_scene' ? 2 : 3;
-
-  const handleStatus = async (key) => {
-    setStatus(key);
-    try {
-      await updateIncident(incident.id, {
-        status: key === 'resolved' ? 'resolved' : 'in_progress',
-        ...(key === 'resolved' && { resolvedAt: Timestamp.fromDate(new Date()) }),
-      });
-    } catch (err) {
-      console.error('Error updating incident status:', err);
-    }
-  };
-
-  return (
-    <div className="page fade-up">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
-          <span className="material-symbols-outlined notranslate notranslate">arrow_back</span>
-        </button>
-        <h1 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Active Incident</h1>
-        <span style={{ width: '0.5rem', height: '0.5rem', borderRadius: '50%', background: 'var(--sos-red)', marginLeft: 'auto', animation: 'pulse 2s infinite' }} />
-      </div>
-
-      <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
-        <div className="badge badge-red" style={{ marginBottom: '0.75rem' }}>
-          <span className="material-symbols-outlined notranslate notranslate" style={{ fontSize: '0.875rem' }}>{typeIcons[incident.type]}</span>
-          {incident.type} Emergency
-        </div>
-        <p style={{ fontWeight: 700, marginBottom: '0.5rem' }}>{incident.locationZone}</p>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <span className="badge badge-blue">{incident.peopleAffected} affected</span>
-          <span className="badge badge-amber">Urgency: {incident.urgencyScore}</span>
-        </div>
-        {incident.description && (
-          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.75rem', fontStyle: 'italic' }}>"{incident.description}"</p>
-        )}
-        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>Reporter: {incident.reporterName || 'Unknown'}</p>
-      </div>
-
-      <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
-        <span className="section-label">Timeline</span>
-        <p style={{ fontSize: '0.8125rem', marginBottom: '0.375rem' }}>📤 Reported — just now</p>
-        <p style={{ fontSize: '0.8125rem' }}>✅ You accepted — just now</p>
-        {status === 'en_route' && <p style={{ fontSize: '0.8125rem', marginTop: '0.375rem' }}>🚶 En route — now</p>}
-        {status === 'on_scene' && <p style={{ fontSize: '0.8125rem', marginTop: '0.375rem' }}>📍 On scene — now</p>}
-        {status === 'resolved' && <p style={{ fontSize: '0.8125rem', marginTop: '0.375rem' }}>✅ Resolved — now</p>}
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        {statusFlow.map((s, i) => (
-          <button
-            key={s.key}
-            className={`btn ${i === currentIdx ? s.cls : 'btn-outline'}`}
-            disabled={i !== currentIdx || status === 'resolved'}
-            onClick={() => handleStatus(s.key)}
-            style={{ opacity: i === currentIdx ? 1 : 0.4 }}
-          >
-            {s.label}
-          </button>
         ))}
       </div>
 
-      {status === 'resolved' && (
-        <div className="glass-card fade-up" style={{ padding: '1.5rem', marginTop: '1.5rem', textAlign: 'center', borderLeft: '4px solid var(--success)' }}>
-          <p style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>✅</p>
-          <p style={{ fontWeight: 700 }}>Incident Resolved</p>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Great work! Timeline has been logged.</p>
-        </div>
-      )}
-
-      <BottomNav role="responder" active="active" />
+      {dialog && <ConfirmDialog {...dialog} />}
+      <BottomNav role="responder" active={view === 'alerts' ? 'alerts' : 'active'} />
     </div>
   );
 }
