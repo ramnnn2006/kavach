@@ -56,7 +56,7 @@ function AppRoutes() {
   const defaultRoute = userProfile?.role ? `/${userProfile.role.toLowerCase()}` : '/student';
 
   return (
-    <div style={{ maxWidth: '430px', margin: '0 auto', minHeight: '100dvh', position: 'relative', background: 'var(--bg)' }}>
+    <div className="app-container" style={{ width: '100%', minHeight: '100dvh', position: 'relative', background: 'var(--bg)' }}>
       <ConnectionBanner />
       <Routes>
         <Route path="/" element={<LandingPage />} />
