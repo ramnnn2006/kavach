@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
+import { Shield, Eye, EyeOff, User, Mail, Lock, HelpCircle, Zap, GraduationCap, ShieldCheck, Building2 } from 'lucide-react';
 
 function getPasswordStrength(password) {
   if (!password) return { label: '', score: 0, color: 'var(--border)' };
@@ -19,46 +20,29 @@ export default function Login({ onLoginSuccess }) {
   const { login, signup, demoLogin, resetPassword, isFirebaseConfigured } = useAuth();
   const { showToast } = useToast();
 
-  // Onboarding vs Form views
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    return localStorage.getItem('kavach_onboarded') !== 'true';
-  });
+  const [showOnboarding, setShowOnboarding] = useState(() => localStorage.getItem('kavach_onboarded') !== 'true');
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Form states
-  const [activeTab, setActiveTab] = useState('signin'); // 'signin' or 'signup'
+  const [activeTab, setActiveTab] = useState('signin');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role: 'Student' // Student, Responder, Admin
-  });
-
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'Student' });
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
 
   const onboardingSlides = [
-    {
-      icon: 'shield',
-      title: 'Your Campus Shield',
-      description: 'Kavach links students, medical personnel, security teams, and facility responders instantly to ensure rapid response.'
-    },
-    {
-      icon: 'bolt',
-      title: 'One-Tap Emergency SOS',
-      description: 'Quickly report fires, elevator blockages, power failures, or medical crises and watch responders coordinate on-screen.'
-    },
-    {
-      icon: 'share_location',
-      title: 'Real-time Coordination',
-      description: 'Track responder distance, access campus-wide safety updates, and maintain high awareness under critical events.'
-    }
+    { id: 1, title: 'Instant SOS', desc: 'Trigger campus-wide emergencies in 2 taps. Alerts bypass WhatsApp delays.', icon: <Zap size={48} color="var(--primary)" /> },
+    { id: 2, title: 'Smart Dispatch', desc: 'Responders are auto-assigned based on incident type and priority.', icon: <Shield size={48} color="var(--primary)" /> },
+    { id: 3, title: 'Power Grid Failures', desc: 'Admins instantly reroute power to exam halls during loadshedding.', icon: <Building2 size={48} color="var(--primary)" /> },
   ];
 
-  // Auto validate on input changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (touched[name]) setErrors(prev => ({ ...prev, [name]: validateField(name, value) }));
+  };
+
   const validateField = (name, val) => {
     let err = '';
     if (name === 'email') {
@@ -73,14 +57,6 @@ export default function Login({ onLoginSuccess }) {
     return err;
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (touched[name]) {
-      setErrors(prev => ({ ...prev, [name]: validateField(name, value) }));
-    }
-  };
-
   const handleBlur = (e) => {
     const { name, value } = e.target;
     setTouched(prev => ({ ...prev, [name]: true }));
@@ -90,20 +66,17 @@ export default function Login({ onLoginSuccess }) {
   const isEmailValid = formData.email && !validateField('email', formData.email);
   const isPasswordValid = formData.password && !validateField('password', formData.password);
   const isNameValid = activeTab === 'signin' || (formData.name.trim() && !validateField('name', formData.name));
-
   const isFormValid = isEmailValid && isPasswordValid && isNameValid;
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setErrors({});
     setTouched({});
-    setFormData(prev => ({ ...prev, password: '' })); // clear password on tab switch
+    setFormData(prev => ({ ...prev, password: '' }));
   };
 
   const handleFormSubmit = async (e) => {
     if (e) e.preventDefault();
-
-    // Mark all as touched
     const allTouched = { email: true, password: true, name: true };
     setTouched(allTouched);
 
@@ -113,90 +86,63 @@ export default function Login({ onLoginSuccess }) {
 
     const nextErrors = { email: emailErr, password: passErr };
     if (activeTab === 'signup') nextErrors.name = nameErr;
-
     setErrors(nextErrors);
 
-    if (emailErr || passErr || (activeTab === 'signup' && nameErr)) {
-      showToast('Please correct validation errors.', 'error');
-      return;
-    }
+    if (emailErr || passErr || (activeTab === 'signup' && nameErr)) return;
 
     setIsLoading(true);
     try {
       if (activeTab === 'signin') {
-        if (isFirebaseConfigured) {
-          await login(formData.email, formData.password);
-        } else {
-          // Demo fallback
-          await new Promise(r => setTimeout(r, 1000));
-          demoLogin('student'); // default to student for generic sign in
-        }
+        if (isFirebaseConfigured) await login(formData.email, formData.password);
+        else { await new Promise(r => setTimeout(r, 1000)); demoLogin('student'); }
         showToast('Logged in successfully!', 'success');
       } else {
-        // Sign Up
-        if (isFirebaseConfigured) {
-          await signup(formData.email, formData.password, formData.name, formData.role);
-        } else {
-          // Demo fallback
-          await new Promise(r => setTimeout(r, 1000));
-          demoLogin(formData.role.toLowerCase());
-        }
-        showToast(`Account registered as ${formData.role}!`, 'success');
+        if (isFirebaseConfigured) await signup(formData.email, formData.password, formData.name, formData.role);
+        else { await new Promise(r => setTimeout(r, 1000)); demoLogin(formData.role.toLowerCase()); }
+        showToast('Account created successfully!', 'success');
       }
-      if (onLoginSuccess) onLoginSuccess(formData.role);
+      if (onLoginSuccess) onLoginSuccess();
     } catch (err) {
       console.error(err);
-      showToast(err.message || 'Authentication failed. Please verify and retry.', 'error');
+      showToast(err.message || 'Authentication failed. Please try again.', 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleQuickDemoAccess = (role) => {
+  const handleQuickDemoAccess = async (role) => {
     setIsLoading(true);
     try {
+      await new Promise(r => setTimeout(r, 800));
       demoLogin(role.toLowerCase());
-      showToast(`Logged in successfully as Demo ${role}!`, 'success');
-      if (onLoginSuccess) onLoginSuccess(role);
+      showToast(`Demo mode activated as ${role}`, 'success');
+      if (onLoginSuccess) onLoginSuccess();
     } catch (err) {
-      console.error(err);
-      showToast('Demo login failed.', 'error');
+      showToast('Failed to enter demo mode.', 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleForgotPassword = async () => {
-    if (!formData.email) {
-      showToast('Please enter your email address in the field above first.', 'error');
+    if (!formData.email || errors.email) {
+      showToast('Please enter a valid email address first.', 'error');
       return;
     }
-    const emailErr = validateField('email', formData.email);
-    if (emailErr) {
-      showToast('Please enter a valid email address.', 'error');
-      return;
-    }
-    
     setIsLoading(true);
     try {
       if (isFirebaseConfigured) {
         await resetPassword(formData.email);
-        showToast('Password reset link sent to your email!', 'success');
+        showToast(`Password reset link sent to ${formData.email}`, 'success');
       } else {
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(r => setTimeout(r, 800));
         showToast(`Demo Mode: Password reset link simulated successfully for ${formData.email}!`, 'success');
       }
     } catch (err) {
-      console.error(err);
       showToast(err.message || 'Failed to send password reset email.', 'error');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleFinishOnboarding = () => {
-    localStorage.setItem('kavach_onboarded', 'true');
-    setShowOnboarding(false);
   };
 
   const strength = getPasswordStrength(formData.password);
@@ -204,188 +150,122 @@ export default function Login({ onLoginSuccess }) {
   if (showOnboarding) {
     const slide = onboardingSlides[currentSlide];
     return (
-      <div className="page fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', padding: '1.5rem', background: 'var(--bg)' }}>
-        <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '2.5rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-          
-          {/* Neon Pulse Backdrop */}
-          <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '120%', height: '50%', background: 'radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
-
-          {/* Logo Brand */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2rem', zIndex: 1 }}>
-            <span className="material-symbols-outlined notranslate filled" style={{ color: 'var(--primary)', fontSize: '2.25rem' }}>shield</span>
-            <span style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.05em', color: 'var(--text-main)' }}>KAVACH</span>
+      <div className="page-login fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', padding: '1.5rem', background: 'var(--bg)' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', maxWidth: '340px', textAlign: 'center', width: '100%' }}>
+          <div style={{ width: '6rem', height: '6rem', borderRadius: '1.5rem', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem' }}>
+            {slide.icon}
           </div>
-
-          {/* Animated Slide Icon */}
-          <div style={{
-            width: '6.5rem', height: '6.5rem', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.08)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem',
-            border: '2px solid rgba(59, 130, 246, 0.15)', zIndex: 1
-          }}>
-            <span className="material-symbols-outlined notranslate filled" style={{ fontSize: '3rem', color: 'var(--primary)', animation: 'pulse 2.5s infinite' }}>{slide.icon}</span>
-          </div>
-
-          {/* Texts */}
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, marginBottom: '0.75rem', color: 'var(--text-main)', zIndex: 1 }}>{slide.title}</h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5', minHeight: '4.5rem', zIndex: 1 }}>{slide.description}</p>
-
-          {/* Pagination Indicators */}
-          <div style={{ display: 'flex', gap: '0.5rem', margin: '2rem 0 1rem' }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-main)', marginBottom: '1rem', letterSpacing: '-0.02em' }}>{slide.title}</h2>
+          <p style={{ fontSize: '1rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>{slide.desc}</p>
+        </div>
+        <div style={{ width: '100%', maxWidth: '340px', paddingBottom: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '2rem' }}>
             {onboardingSlides.map((_, idx) => (
-              <div
-                key={idx}
-                onClick={() => setCurrentSlide(idx)}
-                style={{
-                  width: idx === currentSlide ? '1.5rem' : '0.5rem',
-                  height: '0.5rem',
-                  borderRadius: '9999px',
-                  background: idx === currentSlide ? 'var(--primary)' : 'var(--border)',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease'
-                }}
-              />
+              <div key={idx} style={{ width: idx === currentSlide ? '1.5rem' : '0.5rem', height: '0.5rem', borderRadius: '1rem', background: idx === currentSlide ? 'var(--primary)' : 'var(--border)', transition: 'all 0.3s' }} />
             ))}
           </div>
-
-          {/* Interaction controls */}
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1rem', zIndex: 1 }}>
-            {currentSlide < onboardingSlides.length - 1 ? (
-              <button className="btn btn-primary" onClick={() => setCurrentSlide(prev => prev + 1)}>
-                Next
-              </button>
-            ) : (
-              <button className="btn btn-primary" onClick={handleFinishOnboarding}>
-                Get Started
-              </button>
-            )}
-            
-            <button className="btn btn-outline" style={{ border: 'none', textTransform: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', padding: '0.5rem' }} onClick={handleFinishOnboarding}>
-              Skip Tutorial
-            </button>
-          </div>
+          <button 
+            onClick={() => {
+              if (currentSlide < onboardingSlides.length - 1) setCurrentSlide(prev => prev + 1);
+              else {
+                localStorage.setItem('kavach_onboarded', 'true');
+                setShowOnboarding(false);
+              }
+            }}
+            className="btn btn-primary"
+            style={{ width: '100%', padding: '1.25rem', borderRadius: '1rem', fontSize: '1.1rem' }}
+          >
+            {currentSlide < onboardingSlides.length - 1 ? 'Next' : 'Get Started'}
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="page fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', padding: '2rem 1.5rem', background: 'var(--bg)' }}>
-      
-      {/* Brand Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-        <span className="material-symbols-outlined notranslate filled" style={{ color: 'var(--primary)', fontSize: '2.5rem' }}>shield</span>
-        <span style={{ fontSize: '1.75rem', fontWeight: 900, letterSpacing: '-0.05em', color: 'var(--text-main)' }}>KAVACH</span>
+    <div className="page-login fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100dvh', padding: '2rem 1.5rem', background: 'var(--bg)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '2.5rem', marginTop: '1rem' }}>
+        <Shield size={36} color="var(--primary)" strokeWidth={2.5} />
+        <span style={{ fontSize: '1.75rem', fontWeight: 900, letterSpacing: '-0.04em', color: 'var(--text-main)' }}>KAVACH</span>
       </div>
 
-      <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '2rem', marginBottom: '1.5rem', overflow: 'hidden', position: 'relative' }}>
-        
-        {/* Dynamic sliding indicator tabs */}
-        <div style={{ display: 'flex', background: 'var(--tab-bg)', borderRadius: '0.75rem', padding: '0.25rem', marginBottom: '2rem', border: '1px solid var(--border)', position: 'relative' }}>
-          <div style={{
-            position: 'absolute', top: '0.25rem', bottom: '0.25rem',
-            left: activeTab === 'signin' ? '0.25rem' : '50%',
-            right: activeTab === 'signin' ? '50%' : '0.25rem',
-            background: 'var(--card-bg)', borderRadius: '0.5rem',
-            boxShadow: '0 2px 6px rgba(15, 23, 42, 0.08)',
-            border: '1px solid var(--card-border)',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', zIndex: 0
-          }} />
-
+      <div className="glass-card" style={{ width: '100%', maxWidth: '400px', padding: '1.5rem', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', background: 'var(--tab-bg)', borderRadius: '1rem', padding: '0.25rem', marginBottom: '1.5rem' }}>
           <button 
-            type="button" 
+            className={`tab-btn ${activeTab === 'signin' ? 'active' : ''}`}
             onClick={() => handleTabChange('signin')}
-            style={{ flex: 1, padding: '0.75rem', background: 'none', border: 'none', fontSize: '0.85rem', fontWeight: 700, color: activeTab === 'signin' ? 'var(--primary)' : 'var(--text-muted)', cursor: 'pointer', zIndex: 1, transition: 'color 0.2s', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+            style={{ flex: 1, padding: '0.75rem', borderRadius: '0.75rem', border: 'none', background: activeTab === 'signin' ? 'var(--card-bg)' : 'transparent', color: activeTab === 'signin' ? 'var(--text-main)' : 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'signin' ? 'var(--shadow-sm)' : 'none' }}
           >
-            Sign In
+            SIGN IN
           </button>
           <button 
-            type="button" 
+            className={`tab-btn ${activeTab === 'signup' ? 'active' : ''}`}
             onClick={() => handleTabChange('signup')}
-            style={{ flex: 1, padding: '0.75rem', background: 'none', border: 'none', fontSize: '0.85rem', fontWeight: 700, color: activeTab === 'signup' ? 'var(--primary)' : 'var(--text-muted)', cursor: 'pointer', zIndex: 1, transition: 'color 0.2s', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+            style={{ flex: 1, padding: '0.75rem', borderRadius: '0.75rem', border: 'none', background: activeTab === 'signup' ? 'var(--card-bg)' : 'transparent', color: activeTab === 'signup' ? 'var(--text-main)' : 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', boxShadow: activeTab === 'signup' ? 'var(--shadow-sm)' : 'none' }}
           >
-            Register
+            REGISTER
           </button>
         </div>
 
-        {/* Dynamic Forms */}
         <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          
           {activeTab === 'signup' && (
             <div>
-              <div className="input-group" style={{ marginBottom: 0 }}>
-                <span className="material-symbols-outlined notranslate">person</span>
+              <div style={{ position: 'relative' }}>
+                <User size={20} color="var(--text-muted)" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
                 <input
                   type="text"
                   name="name"
-                  className="input-field"
                   placeholder="Full Name"
                   value={formData.name}
                   onChange={handleInputChange}
                   onBlur={handleBlur}
                   disabled={isLoading}
+                  style={{ paddingLeft: '3rem', width: '100%', padding: '16px 16px 16px 3rem', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--card-bg)', fontSize: '16px', color: 'var(--text-main)' }}
                 />
               </div>
-              {touched.name && errors.name && (
-                <p style={{ color: 'var(--sos-red)', fontSize: '0.75rem', marginTop: '0.25rem', paddingLeft: '1rem', fontWeight: '500' }}>
-                  {errors.name}
-                </p>
-              )}
+              {touched.name && errors.name && <p style={{ color: 'var(--sos-red)', fontSize: '0.75rem', marginTop: '0.25rem', paddingLeft: '1rem', fontWeight: '500' }}>{errors.name}</p>}
             </div>
           )}
 
           <div>
-            <div className="input-group" style={{ marginBottom: 0 }}>
-              <span className="material-symbols-outlined notranslate">mail</span>
+            <div style={{ position: 'relative' }}>
+              <Mail size={20} color="var(--text-muted)" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="email"
                 name="email"
-                className="input-field"
                 placeholder="Email Address"
                 value={formData.email}
                 onChange={handleInputChange}
                 onBlur={handleBlur}
                 disabled={isLoading}
+                style={{ paddingLeft: '3rem', width: '100%', padding: '16px 16px 16px 3rem', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--card-bg)', fontSize: '16px', color: 'var(--text-main)', borderColor: (touched.email && errors.email) ? 'var(--sos-red)' : 'var(--border)', backgroundColor: (touched.email && errors.email) ? 'rgba(239, 68, 68, 0.05)' : 'var(--card-bg)' }}
               />
-              {isEmailValid && (
-                <span className="material-symbols-outlined notranslate" style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--success)', pointerEvents: 'none' }}>
-                  check_circle
-                </span>
-              )}
             </div>
-            {touched.email && errors.email && (
-              <p style={{ color: 'var(--sos-red)', fontSize: '0.75rem', marginTop: '0.25rem', paddingLeft: '1rem', fontWeight: '500' }}>
-                {errors.email}
-              </p>
-            )}
+            {touched.email && errors.email && <p style={{ color: 'var(--sos-red)', fontSize: '0.75rem', marginTop: '0.25rem', paddingLeft: '1rem', fontWeight: '500' }}>{errors.email}</p>}
           </div>
 
           <div>
-            <div className="input-group" style={{ marginBottom: 0 }}>
-              <span className="material-symbols-outlined notranslate">lock</span>
+            <div style={{ position: 'relative' }}>
+              <Lock size={20} color="var(--text-muted)" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="password"
-                className="input-field"
                 placeholder="Password"
                 value={formData.password}
                 onChange={handleInputChange}
                 onBlur={handleBlur}
                 disabled={isLoading}
-                style={{ paddingRight: '3rem' }}
+                style={{ paddingLeft: '3rem', paddingRight: '3rem', width: '100%', padding: '16px 48px 16px 3rem', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--card-bg)', fontSize: '16px', color: 'var(--text-main)', borderColor: (touched.password && errors.password) ? 'var(--sos-red)' : 'var(--border)', backgroundColor: (touched.password && errors.password) ? 'rgba(239, 68, 68, 0.05)' : 'var(--card-bg)' }}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)',
-                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)'
-                }}
+                style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
               >
-                <span className="material-symbols-outlined notranslate">{showPassword ? 'visibility_off' : 'visibility'}</span>
+                {showPassword ? <EyeOff size={20} color="var(--text-muted)" /> : <Eye size={20} color="var(--text-muted)" />}
               </button>
             </div>
 
-            {/* Password strength meter — HIDE ON SIGN IN, ONLY SHOW ON SIGN UP */}
             {activeTab === 'signup' && formData.password.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', paddingLeft: '1rem' }}>
                 <div style={{ flex: 1, height: '4px', background: 'var(--border)', borderRadius: '2px', overflow: 'hidden' }}>
@@ -395,20 +275,11 @@ export default function Login({ onLoginSuccess }) {
               </div>
             )}
 
-            {touched.password && errors.password && (
-              <p style={{ color: 'var(--sos-red)', fontSize: '0.75rem', marginTop: '0.25rem', paddingLeft: '1rem', fontWeight: '500' }}>
-                {errors.password}
-              </p>
-            )}
+            {touched.password && errors.password && <p style={{ color: 'var(--sos-red)', fontSize: '0.75rem', marginTop: '0.25rem', paddingLeft: '1rem', fontWeight: '500' }}>{errors.password}</p>}
             
             {activeTab === 'signin' && (
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
-                <button 
-                  type="button" 
-                  onClick={handleForgotPassword}
-                  disabled={isLoading}
-                  style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer' }}
-                >
+                <button type="button" onClick={handleForgotPassword} disabled={isLoading} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer' }}>
                   Forgot Password?
                 </button>
               </div>
@@ -417,117 +288,73 @@ export default function Login({ onLoginSuccess }) {
 
           {activeTab === 'signup' && (
             <div>
-              <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem', paddingLeft: '0.25rem' }}>SELECT SYSTEM ROLE</p>
-              
+              <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.75rem', paddingLeft: '0.25rem' }}>SELECT SYSTEM ROLE</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-                {['Student', 'Responder', 'Admin'].map((role) => (
+                {[
+                  { name: 'Student', icon: <GraduationCap size={16} /> },
+                  { name: 'Responder', icon: <ShieldCheck size={16} /> },
+                  { name: 'Admin', icon: <Building2 size={16} /> }
+                ].map((role) => (
                   <button
-                    key={role}
+                    key={role.name}
                     type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, role }))}
+                    onClick={() => setFormData(prev => ({ ...prev, role: role.name }))}
                     style={{
-                      padding: '0.6rem 0.25rem',
-                      borderRadius: '0.5rem',
-                      background: formData.role === role ? 'rgba(59, 130, 246, 0.1)' : 'var(--tab-bg)',
-                      border: formData.role === role ? '2px solid var(--primary)' : '1px solid var(--border)',
-                      color: formData.role === role ? 'var(--primary)' : 'var(--text-main)',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.25rem',
-                      transition: 'all 0.2s'
+                      padding: '0.75rem 0.25rem', borderRadius: '0.5rem',
+                      background: formData.role === role.name ? 'rgba(59, 130, 246, 0.1)' : 'var(--tab-bg)',
+                      border: formData.role === role.name ? '2px solid var(--primary)' : '1px solid var(--border)',
+                      color: formData.role === role.name ? 'var(--primary)' : 'var(--text-main)',
+                      fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', transition: 'all 0.2s'
                     }}
                   >
-                    {role === 'Student' && '🎓'}
-                    {role === 'Responder' && '🛡️'}
-                    {role === 'Admin' && '🏫'}
-                    {role}
+                    {role.icon}
+                    {role.name}
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          <button 
-            type="submit" 
-            className={`btn btn-primary ${isLoading ? 'loading' : ''}`}
-            disabled={!isFormValid || isLoading}
-            style={{ marginTop: '0.5rem' }}
-          >
+          <button type="submit" className={`btn btn-primary ${isLoading ? 'loading' : ''}`} disabled={!isFormValid || isLoading} style={{ marginTop: '0.5rem', padding: '16px', borderRadius: '12px' }}>
             {activeTab === 'signin' ? 'Sign In' : 'Create Account'}
           </button>
         </form>
       </div>
 
-      {/* Modern Developer Sandbox / Quick Demo Login Section */}
-      <div className="glass-card fade-up" style={{
-        width: '100%', maxWidth: '400px', padding: '1.25rem 1.5rem',
-        border: '1px solid rgba(59, 130, 246, 0.2)',
-        boxShadow: '0 4px 20px rgba(59, 130, 246, 0.05)',
-        background: 'var(--card-bg)',
-        textAlign: 'center',
-        position: 'relative'
-      }}>
-        <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%) translateY(-50%)', padding: '0.25rem 0.75rem', borderRadius: '9999px', background: 'var(--primary)', color: 'white', fontSize: '0.625rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)' }}>
+      <div className="glass-card fade-up" style={{ width: '100%', maxWidth: '400px', padding: '1.5rem', border: '1px solid rgba(59, 130, 246, 0.2)', boxShadow: '0 4px 20px rgba(59, 130, 246, 0.05)', background: 'var(--card-bg)', textAlign: 'center', position: 'relative' }}>
+        <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%) translateY(-50%)', padding: '0.25rem 0.75rem', borderRadius: '999px', background: 'var(--primary)', color: 'white', fontSize: '0.625rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)' }}>
           Sandbox Dev Tools
         </div>
 
-        <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '0.25rem', marginBottom: '0.25rem' }}>
-          ⚡ Immediate One-Click Demo access
+        <p style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.5rem', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
+          <Zap size={16} color="var(--sos-amber)" fill="var(--sos-amber)" /> Immediate One-Click Demo
         </p>
-        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
           Skip authentication to test the app across different workspace views:
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-          <button 
-            className="btn btn-outline" 
-            onClick={() => handleQuickDemoAccess('Student')}
-            style={{ padding: '0.5rem 0.25rem', fontSize: '0.7rem', textTransform: 'none', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.25rem', height: 'auto', borderRadius: '0.5rem' }}
-            disabled={isLoading}
-          >
-            <span style={{ fontSize: '1.25rem' }}>🎓</span>
-            <span>Student</span>
-          </button>
-          <button 
-            className="btn btn-outline" 
-            onClick={() => handleQuickDemoAccess('Responder')}
-            style={{ padding: '0.5rem 0.25rem', fontSize: '0.7rem', textTransform: 'none', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.25rem', height: 'auto', borderRadius: '0.5rem' }}
-            disabled={isLoading}
-          >
-            <span style={{ fontSize: '1.25rem' }}>🛡️</span>
-            <span>Responder</span>
-          </button>
-          <button 
-            className="btn btn-outline" 
-            onClick={() => handleQuickDemoAccess('Admin')}
-            style={{ padding: '0.5rem 0.25rem', fontSize: '0.7rem', textTransform: 'none', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.25rem', height: 'auto', borderRadius: '0.5rem' }}
-            disabled={isLoading}
-          >
-            <span style={{ fontSize: '1.25rem' }}>🏫</span>
-            <span>Admin</span>
-          </button>
+          {[
+            { name: 'Student', icon: <GraduationCap size={20} /> },
+            { name: 'Responder', icon: <ShieldCheck size={20} /> },
+            { name: 'Admin', icon: <Building2 size={20} /> }
+          ].map((role) => (
+            <button 
+              key={role.name}
+              onClick={() => handleQuickDemoAccess(role.name)}
+              disabled={isLoading}
+              style={{ padding: '0.75rem 0.25rem', fontSize: '0.75rem', fontWeight: 700, background: 'var(--tab-bg)', border: '1px solid var(--border)', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', borderRadius: '0.75rem', cursor: 'pointer', transition: 'all 0.2s' }}
+            >
+              {role.icon}
+              {role.name}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Option to replay onboarding slider */}
-      <button 
-        type="button" 
-        onClick={() => {
-          localStorage.removeItem('kavach_onboarded');
-          setShowOnboarding(true);
-        }}
-        style={{
-          background: 'none', border: 'none', color: 'var(--text-muted)',
-          fontSize: '0.75rem', cursor: 'pointer', marginTop: '1rem',
-          display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600
-        }}
-      >
-        <span className="material-symbols-outlined notranslate" style={{ fontSize: '1rem' }}>help</span>
-        Replay Welcome Walkthrough
+      <button type="button" onClick={() => { localStorage.removeItem('kavach_onboarded'); setShowOnboarding(true); }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer', marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 700 }}>
+        <HelpCircle size={16} /> Replay Welcome Walkthrough
       </button>
     </div>
   );

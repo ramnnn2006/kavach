@@ -53,11 +53,16 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
-    if (isFirebaseConfigured && auth) {
-      await signOut(auth);
+    try {
+      if (isFirebaseConfigured && auth) {
+        await signOut(auth);
+      }
+    } catch (err) {
+      console.error('Error signing out:', err);
+    } finally {
+      setUser(null);
+      setProfile(null);
     }
-    setUser(null);
-    setProfile(null);
   }
 
   async function updateProfileLocally(newFields) {
