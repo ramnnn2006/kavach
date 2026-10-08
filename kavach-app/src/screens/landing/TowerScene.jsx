@@ -49,8 +49,9 @@ function Windows({ tower, face }) {
   for (let r = rows - 1; r >= 0; r--) {
     for (let c = 0; c < COLS; c++) {
       const on = lit(tower, face, r, c);
-      const style = on ? { animationDelay: `${(hash(tower, face, r, c) % 7) * -0.9}s`, animationDuration: `${3 + (hash(tower, face, r, c) % 4)}s` } : undefined;
-      cells.push(<i key={`${r}-${c}`} className={on ? 'tw tw--lit' : 'tw'} style={style} />);
+      const twinkles = on && hash(tower, face, r, c) % 3 === 0;
+      const style = twinkles ? { animationDelay: `${(hash(tower, face, r, c) % 7) * -0.9}s`, animationDuration: `${3 + (hash(tower, face, r, c) % 4)}s` } : undefined;
+      cells.push(<i key={`${r}-${c}`} className={twinkles ? 'tw tw--lit tw--twinkle' : on ? 'tw tw--lit' : 'tw'} style={style} />);
     }
   }
   return <div className="tface__windows" style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}>{cells}</div>;
@@ -74,10 +75,10 @@ function Tower({ t }) {
 // Things that stand up always face the camera (billboards), so they stay upright while the scene turns.
 const TREES = [[14, 28], [14, 160], [14, 222], [14, 402], [402, 28], [402, 165], [402, 228], [402, 402], [88, 404], [350, 406], [100, 12], [312, 10]];
 const WALKERS = [
-  { from: [166, 0], to: [166, 420], dur: 26, tone: 'var(--orange)', delay: 0 },
-  { from: [236, 420], to: [236, 0], dur: 31, tone: 'var(--pink)', delay: -9 },
-  { from: [0, 160], to: [420, 160], dur: 36, tone: 'var(--purple)', delay: -14 },
-  { from: [420, 222], to: [0, 222], dur: 29, tone: 'var(--green)', delay: -4 },
+  { from: [166, 0], to: [166, 420], dur: 16, tone: 'var(--orange)', delay: 0 },
+  { from: [236, 420], to: [236, 0], dur: 19, tone: 'var(--pink)', delay: -9 },
+  { from: [0, 160], to: [420, 160], dur: 22, tone: 'var(--purple)', delay: -14 },
+  { from: [420, 222], to: [0, 222], dur: 18, tone: 'var(--green)', delay: -4 },
 ];
 
 // A plain coloured block (same five faces as a tower, no windows)
@@ -103,45 +104,86 @@ function Tree({ x, y, i }) {
 }
 
 export default function TowerScene() {
-  const ref = useRef(null);
+  const sceneRef = useRef(null);
+  const worldRef = useRef(null);
   const reduced = usePrefersReducedMotion();
 
-  // Pointer and scroll gently turn the whole scene. One rAF writes two CSS variables.
+  // The scene turns slowly by itself, leans toward the pointer and swings a little as you scroll.
+  // The transform is written straight to one element each frame (no CSS variables), so the rest
+  // of the tree is never restyled and the motion stays smooth.
   useEffect(() => {
-    const el = ref.current;
-    if (!el || reduced) return undefined;
+    const scene = sceneRef.current;
+    const world = worldRef.current;
+    if (!scene || !world || reduced) return undefined;
+
+    let scale = parseFloat(getComputedStyle(scene).getPropertyValue('--s')) || 1;
+    const onResize = () => { scale = parseFloat(getComputedStyle(scene).getPropertyValue('--s')) || 1; };
+    window.addEventListener('resize', onResize);
+
+    // Pointer position relative to the scene: moving the mouse across it tips and turns the whole block.
     let px = 0;
     let py = 0;
-    let raf = 0;
-    const apply = () => {
-      raf = 0;
-      const scroll = Math.min(1, window.scrollY / 700);
-      el.style.setProperty('--rx', `${60 + py * -6 + scroll * 6}deg`);
-      el.style.setProperty('--rz', `${-38 + px * 12 + scroll * 24}deg`);
-    };
-    const queue = () => { if (!raf) raf = requestAnimationFrame(apply); };
     const onMove = (e) => {
-      px = (e.clientX / window.innerWidth - 0.5) * 2;
-      py = (e.clientY / window.innerHeight - 0.5) * 2;
-      queue();
+      const r = scene.getBoundingClientRect();
+      px = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / (window.innerWidth * 0.35)));
+      py = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / (window.innerHeight * 0.45)));
     };
-    const fine = window.matchMedia && window.matchMedia('(hover: hover)').matches;
-    if (fine) window.addEventListener('pointermove', onMove, { passive: true });
-    window.addEventListener('scroll', queue, { passive: true });
-    apply();
+    const onLeave = () => { px = 0; py = 0; };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    document.addEventListener('pointerleave', onLeave);
+
+    // Drag to spin it; it eases back when let go.
+    let dragging = false;
+    let lastX = 0;
+    let spin = 0;
+    const down = (e) => { dragging = true; lastX = e.clientX; scene.classList.add('is-grabbing'); try { scene.setPointerCapture(e.pointerId); } catch { /* synthetic or unsupported pointer */ } };
+    const drag = (e) => { if (!dragging) return; spin = Math.max(-90, Math.min(90, spin + (e.clientX - lastX) * 0.35)); lastX = e.clientX; };
+    const up = () => { dragging = false; scene.classList.remove('is-grabbing'); };
+    scene.addEventListener('pointerdown', down);
+    scene.addEventListener('pointermove', drag);
+    scene.addEventListener('pointerup', up);
+    scene.addEventListener('pointercancel', up);
+
+    let visible = true;
+    const io = 'IntersectionObserver' in window ? new IntersectionObserver(([e]) => { visible = e.isIntersecting; }, { threshold: 0 }) : null;
+    io?.observe(scene);
+
+    let curRx = 60;
+    let curRz = -38;
+    let raf = 0;
+    const frame = (now) => {
+      raf = requestAnimationFrame(frame);
+      if (!visible || document.hidden) return;
+      if (!dragging) spin *= 0.97;
+      const scroll = Math.min(1, window.scrollY / 700);
+      const targetRz = -38 + Math.sin(now / 3600) * 5 + px * 26 + spin + scroll * 22;
+      const targetRx = 60 + Math.sin(now / 5200) * 1.2 - py * 10 + scroll * 5;
+      curRz += (targetRz - curRz) * 0.12;
+      curRx += (targetRx - curRx) * 0.12;
+      world.style.transform = `scale(${scale}) rotateX(${Math.max(38, Math.min(78, curRx)).toFixed(2)}deg) rotateZ(${curRz.toFixed(2)}deg)`;
+    };
+    raf = requestAnimationFrame(frame);
+
     return () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('scroll', queue);
       cancelAnimationFrame(raf);
+      io?.disconnect();
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerleave', onLeave);
+      scene.removeEventListener('pointerdown', down);
+      scene.removeEventListener('pointermove', drag);
+      scene.removeEventListener('pointerup', up);
+      scene.removeEventListener('pointercancel', up);
+      world.style.transform = '';
     };
   }, [reduced]);
 
   return (
-    <div className="tscene" ref={ref} aria-hidden="true">
+    <div className="tscene" ref={sceneRef} aria-hidden="true">
       <div className="tcloud tcloud--1" />
       <div className="tcloud tcloud--2" />
       <div className="tcloud tcloud--3" />
-      <div className="tworld">
+      <div className="tworld" ref={worldRef}>
         <div className="tground" />
         <div className="troad troad--v" />
         <div className="troad troad--h" />
@@ -160,10 +202,10 @@ export default function TowerScene() {
         {TREES.map(([x, y], i) => <Tree key={`tree${i}`} x={x} y={y} i={i} />)}
         {WALKERS.map((w, i) => (
           <div key={`w${i}`} className="twalk" style={{ '--x0': `${w.from[0]}px`, '--y0': `${w.from[1]}px`, '--x1': `${w.to[0]}px`, '--y1': `${w.to[1]}px`, animationDuration: `${w.dur}s`, animationDelay: `${w.delay}s` }}>
-            <Block x={-3} y={-3} w={6} d={6} h={14} color={w.tone} className="tperson" style={{ animationDelay: `${i * -0.3}s` }} />
+            <Block x={-4} y={-4} w={8} d={8} h={22} color={w.tone} className="tperson" style={{ animationDelay: `${i * -0.3}s` }} />
           </div>
         ))}
-        <div className="ttech"><Block x={-3} y={-3} w={6} d={6} h={14} color="var(--primary)" /></div>
+        <div className="ttech"><Block x={-4} y={-4} w={8} d={8} h={22} color="var(--primary)" /></div>
       </div>
     </div>
   );

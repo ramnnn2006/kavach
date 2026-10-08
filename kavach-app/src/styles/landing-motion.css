@@ -37,6 +37,8 @@
 @media (min-width: 600px) { .tscene { --s: 0.8; height: 430px; } }
 @media (min-width: 900px) { .tscene { --s: 1.02; height: 600px; } }
 
+.tscene { cursor: grab; touch-action: pan-y; user-select: none; }
+.tscene.is-grabbing { cursor: grabbing; }
 .tworld {
   position: absolute;
   left: 50%;
@@ -46,7 +48,7 @@
   margin: -210px 0 0 -210px;
   transform-style: preserve-3d;
   transform: scale(var(--s)) rotateX(var(--rx)) rotateZ(var(--rz));
-  transition: transform 0.25s ease-out;
+  will-change: transform;
 }
 .tground { position: absolute; inset: 0; border-radius: 28px; background: var(--surface); border: 1px solid var(--border); }
 
@@ -63,7 +65,7 @@
 .tface--e .tface__windows { grid-template-columns: none !important; grid-template-rows: repeat(4, 1fr); grid-auto-flow: column; grid-auto-columns: 1fr; }
 .tw { border-radius: 2px; background: color-mix(in srgb, var(--text) 13%, transparent); }
 .tw--lit { background: color-mix(in srgb, var(--primary) 42%, transparent); }
-.tw--lit { animation: twinkle 4s ease-in-out infinite alternate; }
+.tw--twinkle { animation: twinkle 4s ease-in-out infinite alternate; }
 @keyframes twinkle { from { opacity: 0.4; } to { opacity: 1; } }
 @keyframes blink { from { opacity: 0.35; } to { opacity: 1; } }
 
@@ -103,7 +105,7 @@
 
 /* Lift cabins riding the Tower B and C faces */
 .tcab { position: absolute; border-radius: 2px; }
-.tcab--run { background: var(--primary); animation: cabrun 7s ease-in-out infinite alternate; }
+.tcab--run { background: var(--primary); animation: cabrun 5s ease-in-out infinite alternate; }
 @keyframes cabrun { from { transform: translateY(0); } to { transform: translateY(calc(var(--travel) * -1)); } }
 .tcab--stuck { background: color-mix(in srgb, var(--text) 55%, transparent); animation: cabstuck var(--loop) ease-in-out infinite; }
 @keyframes cabstuck {
