@@ -1,0 +1,152 @@
+/* Landing page motion: 3D tower scene, scroll reveals, tilt cards. Tokens only, no gradients.
+   Everything here is switched off by prefers-reduced-motion at the bottom. */
+
+/* ── Scroll progress ────────────────────────────── */
+.landing__header { position: sticky; }
+.landing__progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; pointer-events: none; }
+.landing__progress span { display: block; height: 100%; background: var(--primary); transform: scaleX(0); transform-origin: 0 50%; }
+
+/* ── Reveals ────────────────────────────────────── */
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) var(--d, 0ms), transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) var(--d, 0ms); }
+.reveal.is-in { opacity: 1; transform: none; }
+/* Children of a staggered list rise one after another once the list is in view */
+.reveal-stagger.reveal { opacity: 1; transform: none; transition: none; }
+.reveal-stagger > * { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease calc(var(--i, 0) * 110ms), transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) calc(var(--i, 0) * 110ms); }
+.reveal-stagger.is-in > * { opacity: 1; transform: none; }
+
+/* ── Hero text entrance ─────────────────────────── */
+@keyframes rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+.landing__hero-text > * { animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.landing__hero-text > :nth-child(2) { animation-delay: 0.12s; }
+.landing__hero-text > :nth-child(3) { animation-delay: 0.24s; }
+
+/* ── Hero visual: towers + alert card ───────────── */
+.landing__visual { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: var(--s-5); }
+@media (min-width: 900px) { .landing__visual { margin-top: 0; } }
+.tscene {
+  --rx: 60deg;
+  --rz: -38deg;
+  --s: 0.62;
+  position: relative;
+  width: 100%;
+  height: 380px;
+  perspective: 1500px;
+  perspective-origin: 50% 40%;
+  animation: rise 1s cubic-bezier(0.2, 0.7, 0.2, 1) 0.1s both;
+}
+@media (min-width: 600px) { .tscene { --s: 0.8; height: 430px; } }
+@media (min-width: 900px) { .tscene { --s: 1.02; height: 600px; } }
+
+.tworld {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 420px;
+  height: 420px;
+  margin: -210px 0 0 -210px;
+  transform-style: preserve-3d;
+  transform: scale(var(--s)) rotateX(var(--rx)) rotateZ(var(--rz));
+  transition: transform 0.25s ease-out;
+}
+.tground { position: absolute; inset: 0; border-radius: 28px; background: var(--surface); border: 1px solid var(--border); }
+
+.tower { position: absolute; left: var(--x); top: var(--y); width: var(--w); height: var(--d); transform-style: preserve-3d; }
+.tface { position: absolute; left: 0; top: 0; transform-origin: 0 0; backface-visibility: hidden; border: 1px solid var(--border); }
+.tface--top { width: 100%; height: 100%; transform: translateZ(var(--h)); background: var(--surface); display: grid; place-items: center; }
+.tface--top span { font-family: var(--font-display); font-weight: 700; font-size: 34px; color: var(--text-muted); transform: rotate(38deg); }
+.tface--s { width: var(--w); height: var(--h); transform: translateY(var(--d)) translateZ(var(--h)) rotateX(-90deg); background: color-mix(in srgb, #000 10%, var(--surface)); }
+.tface--e { width: var(--h); height: var(--d); transform: translateX(var(--w)) translateZ(var(--h)) rotateY(90deg); background: color-mix(in srgb, #000 20%, var(--surface)); }
+.tface--w { width: var(--h); height: var(--d); transform: rotateY(-90deg); background: color-mix(in srgb, #000 20%, var(--surface)); }
+.tface--n { width: var(--w); height: var(--h); transform: rotateX(90deg); background: color-mix(in srgb, #000 10%, var(--surface)); }
+
+.tface__windows { position: absolute; inset: 12px 10px; display: grid; gap: 7px; }
+.tface--e .tface__windows { grid-template-columns: none !important; grid-template-rows: repeat(4, 1fr); grid-auto-flow: column; grid-auto-columns: 1fr; }
+.tw { border-radius: 2px; background: color-mix(in srgb, var(--text) 13%, transparent); }
+.tw--lit { background: color-mix(in srgb, var(--primary) 42%, transparent); }
+.tw--alert { background: var(--danger); animation: blink 1.1s ease-in-out infinite alternate; }
+@keyframes blink { from { opacity: 0.35; } to { opacity: 1; } }
+
+/* Alert ripples on the ground around Tower B */
+.tpulse { position: absolute; left: var(--x); top: var(--y); width: 0; height: 0; transform: translateZ(1px); }
+.tpulse i { position: absolute; width: 190px; height: 190px; margin: -95px 0 0 -95px; border: 2px solid var(--danger); border-radius: 50%; opacity: 0; animation: ripple 3.2s ease-out infinite; }
+.tpulse i:nth-child(2) { animation-delay: 1.05s; }
+.tpulse i:nth-child(3) { animation-delay: 2.1s; }
+@keyframes ripple { 0% { transform: scale(0.2); opacity: 0.75; } 100% { transform: scale(1.35); opacity: 0; } }
+
+/* The maintenance responder driving in */
+.tunit { position: absolute; left: 0; top: 0; width: 0; height: 0; transform: translateZ(2px); animation: drive 7s cubic-bezier(0.45, 0, 0.3, 1) infinite; }
+.tunit i { position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--primary); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--primary); }
+@keyframes drive {
+  0% { transform: translate3d(200px, 430px, 2px); opacity: 0; }
+  6% { opacity: 1; }
+  55% { transform: translate3d(200px, 190px, 2px); }
+  80%, 94% { transform: translate3d(305px, 190px, 2px); opacity: 1; }
+  100% { transform: translate3d(305px, 190px, 2px); opacity: 0; }
+}
+
+/* Alert card floats over the scene */
+.landing__visual .landing__preview {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 300px);
+  margin-top: calc(-1 * var(--s-4));
+  padding: var(--s-3);
+  gap: var(--s-2);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.08);
+  transform: perspective(900px) rotateY(-7deg) rotateX(3deg);
+  animation: float 6s ease-in-out infinite;
+}
+@keyframes float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -8px; } }
+@media (min-width: 900px) {
+  .landing__visual .landing__preview { position: absolute; left: 0; bottom: -110px; margin-top: 0; }
+}
+.landing__visual .landing__preview .stepper__item { transition: opacity 0.3s ease; }
+.landing__visual .landing__preview .stepper__dot { transition: background-color 0.4s ease, border-color 0.4s ease, color 0.4s ease; }
+.landing__preview-who { opacity: 0; transform: translateY(6px); transition: opacity 0.5s ease, transform 0.5s ease; }
+.landing__preview-who.is-on { opacity: 1; transform: none; }
+
+/* ── Facts ──────────────────────────────────────── */
+.landing-fact__value { font-size: var(--fs-title2); font-weight: 700; letter-spacing: -0.01em; }
+
+/* ── Steps: numbered circles joined by a line that draws itself ── */
+.landing-steps { list-style: none; padding-left: 0; max-width: none; grid-template-columns: minmax(0, 1fr); gap: var(--s-4); }
+@media (min-width: 768px) { .landing-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4); } }
+.landing-step { position: relative; display: flex; flex-direction: column; gap: 4px; }
+.landing-step__num {
+  display: grid; place-items: center;
+  width: 44px; height: 44px; margin-bottom: var(--s-2);
+  border-radius: 50%; background: var(--primary); color: var(--on-accent);
+  font-weight: 700; font-size: var(--fs-title3);
+  transform: scale(0.6); transition: transform 0.55s cubic-bezier(0.3, 1.5, 0.5, 1) calc(var(--i, 0) * 110ms + 150ms);
+}
+.reveal-stagger.is-in .landing-step__num { transform: none; }
+.landing-step::after {
+  content: ''; position: absolute; top: 21px; left: 56px; right: -12px; height: 2px; background: var(--border);
+  transform: scaleX(0); transform-origin: 0 50%; transition: transform 0.7s ease calc(var(--i, 0) * 110ms + 350ms);
+}
+.reveal-stagger.is-in .landing-step:not(:last-child)::after { transform: scaleX(1); }
+@media (max-width: 767px) { .landing-step::after { display: none; } }
+.landing-step::marker { content: none; }
+
+/* ── Feature grid with tilt ─────────────────────── */
+.landing-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 600px) { .landing-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .landing-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.landing-grid > .tilt { opacity: 1; transform: none; transition: none; }
+.tilt { background: var(--surface); border-radius: var(--r-md); padding: var(--s-3); transition: transform 0.2s ease-out, box-shadow 0.2s ease-out; will-change: transform; }
+.tilt:hover { box-shadow: 0 14px 30px rgba(0, 0, 0, 0.1); }
+.landing-feature__in { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease calc(var(--i, 0) * 90ms), transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) calc(var(--i, 0) * 90ms); }
+.reveal-stagger.is-in .landing-feature__in { opacity: 1; transform: none; }
+.landing-feature__icon { color: var(--primary); margin-bottom: var(--s-2); }
+
+/* ── Reduced motion: everything visible and still ── */
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .reveal-stagger > *, .landing-feature__in, .landing-step__num, .landing__hero-text > *, .tscene, .landing__preview-who {
+    opacity: 1 !important; transform: none !important; transition: none !important; animation: none !important;
+  }
+  .landing-step::after { transform: scaleX(1) !important; transition: none !important; }
+  .tworld, .tunit, .tpulse i, .tw--alert, .landing__visual .landing__preview { animation: none !important; transition: none !important; }
+  .tpulse i:first-child { opacity: 0.5; transform: scale(0.8); }
+  .tunit { transform: translate3d(305px, 190px, 2px); }
+  .landing__visual .landing__preview { transform: none; }
+}
