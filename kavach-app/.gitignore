@@ -41,3 +41,7 @@ credentials.json
 service-account*.json
 *-service-account*.json
 stitch_mcp.json
+
+# Local seed with demo passwords
+*.local.sql
+dev-dist

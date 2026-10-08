@@ -4,12 +4,57 @@
 
 Legend: ✅ done · 🔄 in progress · ⏸️ blocked / waiting · ⬜ to do
 
-## Right now
+## Right now (autonomous run, started 2026-10-08 ~15:00, user away 3 h)
 
 | What | State | Who |
 | --- | --- | --- |
-| Supabase MCP login | ⏸️ waiting — run `/mcp` → supabase → Authenticate | **You** |
-| Drafting database migrations + seed + 6 demo accounts | 🔄 in progress | Background agent |
+| Supabase schema, RLS, RPCs, cron, realtime, seed, 6 demo accounts | ✅ applied via MCP, 28/28 permission tests pass | Claude |
+| Firebase removed; app runs on Supabase Auth + DB | ✅ | Claude |
+| PWA / caching / icons | ✅ | PWA agent |
+| Resident screens + offline outbox | 🔄 | Resident agent |
+| Responder screens + incident detail + alert sound | 🔄 | Responder agent |
+| Admin screens (overview, incidents, team, society/power, insights, notices, safety check, board) | 🔄 | Admin agent |
+| Profile + landing page | 🔄 | Profile agent |
+| Push notifications (edge function + service worker) | 🔄 | Notifications agent |
+
+GitHub commit budget for this run: 10 (pushed to `pivot/societies` only). Used: 1.
+
+## Every request you've made
+
+| # | Your request | Status | Where / next step |
+| --- | --- | --- | --- |
+| 1 | Ideas to pivot away from campus | ✅ | Chose apartment societies |
+| 2 | Rebrand, simpler UI, debug everything | 🔄 | Phase 1 done; rebrand + simplified role screens in Phase 4 |
+| 3 | Proven issues to show the problem | ✅ | `docs/problem-evidence.md` |
+| 4 | Issues from Chennai / Bengaluru / South India | ✅ | Same doc, city sections |
+| 5 | Doc with every reference link | ✅ | `docs/problem-evidence.md` (local, no claude.ai) |
+| 6 | Nothing on Drive / claude.ai, everything local | ✅ | Cloud doc deleted; rule saved |
+| 7 | Security review of the whole repo with subagents | ✅ | 2 candidates found, both below confidence bar; fixed anyway |
+| 8 | Fix all bugs; what DB / stack are we on | ✅ | Bug-fix commit `9c31a42`; stack review in `rebrand-plan.md` |
+| 9 | Move to Supabase completely | ✅ | Schema applied via MCP; Firebase deleted |
+| 10 | Swarm of agents to check every button, cache, DB — report first | ✅ | 9 audits → `audit-and-fix-plan.md` |
+| 11 | Agents for UI check | ✅ | Included in the 9 audits |
+| 12 | Clear Zen / all caches, analyse what else to delete | ✅ | 225 MB → 3.9 GB free |
+| 13 | Write a plan first | ✅ | `implementation-plan.md` |
+| 14 | Do P0 + P1 | ✅ | Commits `92936b8`, `0d6a3b8` |
+| 15 | How much space is left | ✅ | 3.9 GB free on `/home` |
+| 16 | How to set up Phase 2 | ✅ | Answered; now via MCP |
+| 17 | A better name than Kavach | ⏸️ | Kavach is crowded; **Towerly** recommended — **your call** |
+| 18 | Logo concept | ✅ | Shield + tower + one red window (in app + favicon); redo if renamed |
+| 19 | Demo society named simply (Alpha / Beta) | ✅ | Alpha Residency |
+| 20 | Notification system | ⬜ | Phase 3.5 (push + in-app + optional SMS) |
+| 21 | Which creds you need / can MCP do it | ✅ | Answered; MCP registered |
+| 22 | Use Apple design skill + UI/UX Pro Max; current colours = ick | ✅ | Rebuilt on iOS system colours; **your visual check pending** |
+| 23 | Push everything to GitHub | ✅ | Pushed |
+| 24 | Pushes go to a branch, not `main` | ✅ | `pivot/societies`; rule saved |
+| 25 | 2–3 more nav features; dashboards all look the same | 🔄 | Spec'd per role (`product-spec.md`); built in Phase 4 |
+| 26 | Remove all hardcoded logins; 2 demo logins per role; lift responder vs other responder; admin sees everything; rules enforced | ✅ | 6 real accounts (`docs/demo-accounts.md`, local only); RLS tested 28/28 |
+| 27 | Remove hardcoded reports; reporting UI shouldn't look like a shopping app | 🔄 | Spec'd ("What's happening?" list flow); built in Phase 4 |
+| 28 | More, better feature ideas | ✅ | 8 proposed; 7 chosen + Tamil |
+| 29 | Port the complete code from Firebase to Supabase | ✅ | `src/data/db.js`, Supabase Auth; Firebase removed |
+| 30 | Use Supabase MCP, not CLI | ✅ | All migrations applied through MCP |
+| 31 | Maintain a status file | ✅ | This file |
+| 32 | Cache handling (from audit request) | 🔄 | PWA/caching hardening starting now (Phase 5 parts that don't need the DB) |
 
 ## Decisions made
 
@@ -38,28 +83,24 @@ Legend: ✅ done · 🔄 in progress · ⏸️ blocked / waiting · ⬜ to do
 - [x] Lint + build pass; committed `0d6a3b8`, pushed to branch
 - [ ] Visual check in browser on phone + laptop, light + dark — **you**
 
-## Phase 2 — Supabase database 🔄
-- [x] Product spec with roles, rules, data contract, selected features (`docs/product-spec.md`)
-- [x] `.env` (URL + anon key) and `.env.local` (DB password) written, git-ignored
-- [x] Supabase MCP registered for this project
-- [ ] ⏸️ MCP authenticated — **you**
-- [ ] 🔄 Migrations drafted: enums, tables, functions, triggers, RLS, RPCs, cron, realtime
-- [ ] Seed: society, zones, flats, assets, compliance checks, contacts, notices (no incidents)
-- [ ] 6 demo accounts created (passwords only in local `docs/demo-accounts.md`)
-- [ ] Review migrations
-- [ ] Apply via MCP
-- [ ] Run Supabase security + performance advisors, fix findings
-- [ ] Test RLS per role and concurrent claim (exactly one wins)
+## Phase 2 — Supabase database ✅
+- [x] Product spec (`docs/product-spec.md`)
+- [x] `.env` (URL + publishable key), git-ignored
+- [x] Supabase MCP connected
+- [x] 11 migrations in `kavach-app/supabase/migrations/` applied via MCP (enums → tables → functions → triggers → RLS → RPCs → cron → realtime → home/push → RLS tuning)
+- [x] Seed: Alpha Residency, 9 zones (P1–P4), 15 assets, 11 compliance checks (3 overdue), 7 contacts, 2 notices, **no incidents**
+- [x] 6 demo accounts (2 residents, 2 responders: maintenance / security, 2 admins) — passwords only in local `docs/demo-accounts.md`
+- [x] Security + performance advisors run; fixed search_path, trigger-function exposure, per-row auth calls, duplicate policies, 18 FK indexes
+- [x] `scripts/smoke-test.mjs`: 28/28 pass (anon blocked, specialty visibility, concurrent claim → one winner, forward-only status, audit log, first responder, admin-only RPCs, asset permissions)
+- [ ] Turn on leaked-password protection (Auth settings) — **you**
 
-## Phase 3 — Port app from Firebase to Supabase ⬜
-- [ ] `@supabase/supabase-js`, `src/lib/supabase.js`
-- [ ] `src/data/db.js` implementing the data contract (typed errors)
-- [ ] AuthContext on Supabase Auth (session restore, profile load, role routing)
-- [ ] Login: email/password only — remove all demo buttons and hardcoded profiles
-- [ ] Remove in-memory demo data and demo mode
-- [ ] Delete Firebase: `src/firebase/`, deps, `firebase.json`, `.firebaserc`, `.firebase/`, rules, indexes, debug log
-- [ ] `.env.example` updated
-- [ ] Routes renamed: `/resident`, `/responder`, `/admin`
+## Phase 3 — Port app from Firebase to Supabase ✅
+- [x] `@supabase/supabase-js`, `src/lib/supabase.js`, `src/data/live.js` (realtime refetch), `src/data/db.js` (typed errors)
+- [x] AuthContext on Supabase Auth; Login email/password only; no demo buttons or hardcoded profiles
+- [x] Welcome screen: residents pick tower / floor / flat (`set_my_home` RPC)
+- [x] Firebase deleted (code, deps, config, rules)
+- [x] Routes: `/resident`, `/responder`, `/admin`, `/profile`, `/incident/:id`, `/board`; route-level code splitting
+- [x] i18n framework (English + Tamil) with per-role string files
 
 ## Phase 4 — Role features (3 agents in parallel) ⬜
 
@@ -123,3 +164,4 @@ Legend: ✅ done · 🔄 in progress · ⏸️ blocked / waiting · ⬜ to do
 - 2026-10-08 — Pivot to apartment societies chosen; evidence doc; 9-agent audit; disk cleanup (225 MB → 3.9 GB free)
 - 2026-10-08 — Phase 0 + Phase 1 committed and pushed to `pivot/societies`
 - 2026-10-08 — Supabase project created by user; MCP registered; feature set chosen (Safety Check, vulnerable residents, community first responders, compliance tracker, power-cut mode, command board, reliability reports, Tamil)
+- 2026-10-08 — Autonomous run: schema applied + tested via MCP, Firebase removed, PWA hardened; role screens building in parallel

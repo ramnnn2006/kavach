@@ -1,49 +1,44 @@
-import { useNavigate } from 'react-router-dom';
-import { House, ClipboardList, Map, User, Bell, ListChecks, LayoutDashboard, Zap } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useT } from '../i18n';
+import { NAV, APP_NAME } from '../config/society';
 import { Logo } from './ui';
 
-const navConfigs = {
-  student: [
-    { id: 'home', icon: House, label: 'Home', path: '/student' },
-    { id: 'reports', icon: ClipboardList, label: 'Reports', path: '/student/reports' },
-    { id: 'map', icon: Map, label: 'Map', path: '/map' },
-    { id: 'profile', icon: User, label: 'Profile', path: '/settings' },
-  ],
-  responder: [
-    { id: 'alerts', icon: Bell, label: 'Alerts', path: '/responder' },
-    { id: 'active', icon: ListChecks, label: 'Active', path: '/responder?view=active' },
-    { id: 'map', icon: Map, label: 'Map', path: '/map' },
-    { id: 'profile', icon: User, label: 'Profile', path: '/settings' },
-  ],
-  admin: [
-    { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
-    { id: 'map', icon: Map, label: 'Map', path: '/map' },
-    { id: 'power', icon: Zap, label: 'Power', path: '/admin?tab=power' },
-    { id: 'profile', icon: User, label: 'Profile', path: '/settings' },
-  ],
-};
-
-export default function BottomNav({ role, active }) {
+// Bottom tab bar on phones, sidebar on desktop. `active` is the tab id; inferred from the URL if omitted.
+export default function BottomNav({ active }) {
   const navigate = useNavigate();
-  const items = navConfigs[role?.toLowerCase()] || navConfigs.student;
+  const { pathname } = useLocation();
+  const { role, profile } = useAuth();
+  const { t } = useT();
+  const nav = NAV[role] || NAV.resident;
+
+  const all = [...nav.tabs, ...nav.more];
+  const current = active
+    || all.filter(i => pathname === i.path || pathname.startsWith(`${i.path}/`))
+      .sort((a, b) => b.path.length - a.path.length)[0]?.id;
+
+  const item = ({ id, icon: Icon, labelKey, path }, extra = '') => (
+    <button
+      key={id}
+      className={`nav-item ${extra}`}
+      aria-current={current === id ? 'page' : undefined}
+      onClick={() => navigate(path)}
+    >
+      <Icon size={24} strokeWidth={current === id ? 2.4 : 2} aria-hidden="true" />
+      <span>{t(labelKey)}</span>
+    </button>
+  );
 
   return (
     <nav className="bottom-nav" aria-label="Main">
       <div className="bottom-nav__brand">
         <Logo size={28} />
-        <span>Kavach</span>
+        <span>{APP_NAME}</span>
       </div>
-      {items.map(({ id, icon: Icon, label, path }) => (
-        <button
-          key={id}
-          className="nav-item"
-          aria-current={active === id ? 'page' : undefined}
-          onClick={() => navigate(path)}
-        >
-          <Icon size={24} strokeWidth={active === id ? 2.4 : 2} aria-hidden="true" />
-          <span>{label}</span>
-        </button>
-      ))}
+      {profile?.society?.name && <p className="bottom-nav__society">{profile.society.name}</p>}
+      {nav.tabs.map(i => item(i))}
+      {nav.more.length > 0 && <p className="bottom-nav__section">{t('admin.navMore')}</p>}
+      {nav.more.map(i => item(i, 'nav-item--more'))}
     </nav>
   );
 }

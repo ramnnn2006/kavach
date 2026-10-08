@@ -474,3 +474,11 @@ button.settings-row:hover { background: var(--fill); }
   .nav-item:hover { background: var(--fill); }
   .nav-item[aria-current="page"] { background: var(--fill); color: var(--text); font-weight: 600; }
 }
+
+/* Sidebar extras (desktop only) */
+.bottom-nav__society, .bottom-nav__section, .nav-item--more { display: none; }
+@media (min-width: 768px) {
+  .bottom-nav__society { display: block; padding: 0 var(--s-2) var(--s-3); margin-top: calc(-1 * var(--s-3)); font-size: var(--fs-footnote); color: var(--text-muted); }
+  .bottom-nav__section { display: block; padding: var(--s-3) var(--s-3) var(--s-1); font-size: var(--fs-footnote); color: var(--text-muted); text-transform: uppercase; }
+  .nav-item--more { display: flex; }
+}

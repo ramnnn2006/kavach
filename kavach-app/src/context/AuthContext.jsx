@@ -1,7 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { auth, isFirebaseConfigured } from '../firebase/config';
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { setUserProfile, getUserProfile } from '../firebase/firestore';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const AuthContext = createContext(null);
 
@@ -10,103 +8,144 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-const DEMO_PROFILES = {
-  student: { name: 'Anjum Sana', email: 'student@kavach.com', role: 'student', phone: '+91 98XXXXXXXX' },
-  responder: { name: 'Rajesh Kumar', email: 'responder@kavach.com', role: 'responder', phone: '+91 87XXXXXXXX' },
-  admin: { name: 'Dr. Sharma', email: 'admin@kavach.com', role: 'admin', phone: '+91 76XXXXXXXX' },
-};
-const DEMO_KEY = 'kavach_demo_role';
+const PROFILE_COLUMNS =
+  'id, society_id, full_name, email, phone, role, specialties, on_duty, flat_id, language, vulnerability, first_responder_skill, ' +
+  'flat:flats(id, number, floor, zone_id, zone:zones(id, name, code)), society:societies(id, name, city, security_phone, power_source)';
 
-function readDemoRole() {
-  try { return sessionStorage.getItem(DEMO_KEY); } catch { return null; }
+async function fetchProfile(userId) {
+  const { data, error } = await supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', userId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+function friendlyAuthError(error) {
+  const msg = (error?.message || '').toLowerCase();
+  if (msg.includes('invalid login credentials')) return 'Wrong email or password.';
+  if (msg.includes('email not confirmed')) return 'Confirm your email first, then sign in.';
+  if (msg.includes('already registered') || msg.includes('already been registered')) return 'An account with this email already exists.';
+  if (msg.includes('password should be')) return 'Password must be at least 8 characters.';
+  if (msg.includes('rate limit') || error?.status === 429) return 'Too many attempts. Wait a minute and try again.';
+  if (msg.includes('fetch') || msg.includes('network')) return 'No connection. Check your internet and try again.';
+  return error?.message || 'Something went wrong. Try again.';
 }
 
 export function AuthProvider({ children }) {
-  // Demo sessions survive reloads within the tab
-  const initialDemo = !isFirebaseConfigured ? DEMO_PROFILES[readDemoRole()] : null;
-  const [user, setUser] = useState(initialDemo ? { uid: `demo-${initialDemo.role}`, email: initialDemo.email } : null);
-  const [userProfile, setProfile] = useState(initialDemo);
-  // Only Firebase needs to wait for the session to be restored
-  const [loading, setLoading] = useState(isFirebaseConfigured);
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(isSupabaseConfigured);
+  const currentUserId = useRef(null);
 
-  useEffect(() => {
-    if (!isFirebaseConfigured || !auth) return;
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
-        try {
-          const profile = await getUserProfile(u.uid);
-          setProfile(profile);
-        } catch (err) {
-          console.error('Error fetching user profile:', err);
-          setProfile(null);
-        }
-      } else {
-        setProfile(null);
-      }
-      setLoading(false);
-    });
-    return unsub;
+  const loadProfile = useCallback(async (userId) => {
+    if (!userId) { setProfile(null); return null; }
+    try {
+      const p = await fetchProfile(userId);
+      if (currentUserId.current === userId) setProfile(p);
+      return p;
+    } catch (err) {
+      console.error('Could not load profile:', err);
+      if (currentUserId.current === userId) setProfile(null);
+      return null;
+    }
   }, []);
 
-  async function login(email, password) {
-    if (!isFirebaseConfigured) throw new Error('Firebase not configured. Use Demo mode instead.');
-    const cred = await signInWithEmailAndPassword(auth, email, password);
-    const profile = await getUserProfile(cred.user.uid);
-    setProfile(profile);
-    return profile;
-  }
+  useEffect(() => {
+    if (!isSupabaseConfigured) return undefined;
+    let active = true;
 
-  async function signup(email, password, name) {
-    if (!isFirebaseConfigured) throw new Error('Firebase not configured. Use Demo mode instead.');
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
-    // Firestore rules only allow self-registration as 'student'; admins promote responders/admins.
-    const profile = { name, email, role: 'student', phone: '' };
-    await setUserProfile(cred.user.uid, profile);
-    setProfile(profile);
-    return profile;
-  }
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!active) return;
+      const s = data.session;
+      currentUserId.current = s?.user?.id ?? null;
+      setSession(s);
+      await loadProfile(s?.user?.id);
+      if (active) setLoading(false);
+    });
 
-  async function logout() {
-    try {
-      if (isFirebaseConfigured && auth) {
-        await signOut(auth);
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      const uid = s?.user?.id ?? null;
+      const changedUser = uid !== currentUserId.current;
+      currentUserId.current = uid;
+      setSession(s);
+      if (changedUser) {
+        // Defer DB work out of the auth callback (supabase-js recommendation)
+        setTimeout(() => {
+          loadProfile(uid).finally(() => { if (active) setLoading(false); });
+        }, 0);
       }
+    });
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [loadProfile]);
+
+  // Keep profile fresh when an admin changes role / duty etc.
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid) return undefined;
+    const channel = supabase
+      .channel(`profile:${uid}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${uid}` }, () => loadProfile(uid))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [session?.user?.id, loadProfile]);
+
+  const signIn = useCallback(async (email, password) => {
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (error) throw new Error(friendlyAuthError(error));
+  }, []);
+
+  const signUp = useCallback(async ({ email, password, fullName, phone }) => {
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { data: { full_name: fullName.trim(), phone: phone?.trim() || null } },
+    });
+    if (error) throw new Error(friendlyAuthError(error));
+    return { needsConfirmation: !data.session };
+  }, []);
+
+  const signOut = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
     } catch (err) {
-      console.error('Error signing out:', err);
+      console.error('Sign-out failed:', err);
     } finally {
-      try { sessionStorage.removeItem(DEMO_KEY); } catch { /* storage unavailable */ }
-      setUser(null);
+      currentUserId.current = null;
+      setSession(null);
       setProfile(null);
+      try {
+        sessionStorage.clear();
+        Object.keys(localStorage).filter(k => k.startsWith('kavach_cache')).forEach(k => localStorage.removeItem(k));
+      } catch { /* storage unavailable */ }
     }
-  }
+  }, []);
 
-  async function updateProfileLocally(newFields) {
-    if (user && isFirebaseConfigured) {
-      await setUserProfile(user.uid, newFields);
-    }
-    const updated = { ...userProfile, ...newFields };
-    setProfile(updated);
-    return updated;
-  }
+  const resetPassword = useCallback(async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    if (error) throw new Error(friendlyAuthError(error));
+  }, []);
 
-  async function resetPassword(email) {
-    if (!isFirebaseConfigured) throw new Error('Firebase not configured. Use Demo mode instead.');
-    await sendPasswordResetEmail(auth, email);
-  }
+  const refreshProfile = useCallback(() => loadProfile(session?.user?.id), [loadProfile, session?.user?.id]);
 
-  // Demo mode - skip Firebase auth entirely
-  function demoLogin(role) {
-    if (isFirebaseConfigured) throw new Error('Demo mode is only available without a backend.');
-    const profile = DEMO_PROFILES[role];
-    try { sessionStorage.setItem(DEMO_KEY, role); } catch { /* storage unavailable */ }
-    setUser({ uid: `demo-${role}`, email: profile.email });
-    setProfile(profile);
-  }
+  const value = useMemo(() => ({
+    session,
+    user: session?.user ?? null,
+    profile,
+    userProfile: profile, // legacy alias used by older screens
+    role: profile?.role ?? null,
+    loading,
+    isConfigured: isSupabaseConfigured,
+    signIn,
+    signUp,
+    signOut,
+    logout: signOut,
+    resetPassword,
+    refreshProfile,
+  }), [session, profile, loading, signIn, signUp, signOut, resetPassword, refreshProfile]);
 
-  return (
-    <AuthContext.Provider value={{ user, userProfile, loading, login, signup, logout, demoLogin, updateProfileLocally, resetPassword, isFirebaseConfigured }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
