@@ -22,6 +22,15 @@ psql "$DB_URL" -f supabase/seed_users.local.sql
 | `…0600_rpcs.sql` | All state-changing RPCs, reports, `v_compliance`, `v_team` |
 | `…0700_cron.sql` | `tick_incidents()` every 30 s via `pg_cron` |
 | `…0800_realtime.sql` | Adds tables to `supabase_realtime` |
+| `…0900_home_and_push.sql` | `set_my_home()` (resident picks tower/flat on first run), `push_subscriptions` + `save_push_subscription()` |
+| `…1000_rls_tuning.sql` | Advisor fixes: one policy per table/action, `(select auth.uid())` initplans, FK indexes, trigger functions not callable via RPC |
+
+## Testing
+
+`node scripts/smoke-test.mjs` signs in as the six demo accounts and runs 28 permission checks against the live project
+(anon blocked, specialty visibility, concurrent claim → exactly one winner, forward-only status, audit log, first responders,
+admin-only RPCs, asset permissions). It tags its incidents `[smoke-test]`; delete them afterwards:
+`delete from incidents where description like '[smoke-test]%';`
 
 ## Tables
 

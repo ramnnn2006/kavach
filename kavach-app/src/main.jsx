@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/inter'
 import './index.css'
 import App from './App.jsx'
-import UpdatePrompt from './components/UpdatePrompt.jsx'
 
 // Apply saved display preferences before first paint
 function readPref(key) {
@@ -14,9 +13,6 @@ document.documentElement.classList.toggle('large-text', readPref('kavach_largete
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <>
-      <App />
-      <UpdatePrompt />
-    </>
+    <App />
   </StrictMode>,
 )

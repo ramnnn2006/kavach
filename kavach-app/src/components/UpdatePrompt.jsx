@@ -5,6 +5,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { RefreshCw, CircleCheck } from 'lucide-react';
+import { useT } from '../i18n';
 
 const UPDATE_CHECK_MS = 60 * 60 * 1000;
 const OFFLINE_TOAST_MS = 4000;
@@ -43,6 +44,7 @@ export default function UpdatePrompt() {
     },
   });
 
+  const { t } = useT();
   const [queued, setQueued] = useState(false);
   const pathname = useSyncExternalStore(needRefresh ? subscribePathname : subscribeNoop, getPathname);
   const onProtectedScreen = isProtectedPath(pathname);
@@ -54,8 +56,8 @@ export default function UpdatePrompt() {
 
   useEffect(() => {
     if (!offlineReady) return undefined;
-    const t = setTimeout(() => setOfflineReady(false), OFFLINE_TOAST_MS);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setOfflineReady(false), OFFLINE_TOAST_MS);
+    return () => clearTimeout(timer);
   }, [offlineReady, setOfflineReady]);
 
   if (!needRefresh && !offlineReady) return null;
@@ -67,19 +69,17 @@ export default function UpdatePrompt() {
   const later = () => setNeedRefresh(false);
 
   return createPortal(
-    <div className="toasts">
+    <div className="toasts toasts--top">
       {needRefresh && (
         <div className="toast" role="status" style={{ '--tone': 'var(--blue)', flexWrap: 'wrap' }}>
           <RefreshCw size={18} aria-hidden="true" />
           <p className="toast__msg" style={{ flex: '1 1 10rem' }}>
-            {queued
-              ? 'Update will install when you finish this report.'
-              : 'A new version is available'}
+            {queued ? t('common.updateQueued') : t('common.updateAvailable')}
           </p>
           <div style={{ display: 'flex', gap: 'var(--s-2)', marginLeft: 'auto' }}>
             {!queued && (
               <button type="button" className="btn btn--sm btn--primary" onClick={reload}>
-                {onProtectedScreen ? 'Reload after this report' : 'Reload'}
+                {onProtectedScreen ? t('common.updateAfterReport') : t('common.updateReload')}
               </button>
             )}
             <button
@@ -88,7 +88,7 @@ export default function UpdatePrompt() {
               style={{ background: 'transparent', color: 'inherit' }}
               onClick={queued ? () => setQueued(false) : later}
             >
-              {queued ? 'Cancel' : 'Later'}
+              {queued ? t('common.cancel') : t('common.updateLater')}
             </button>
           </div>
         </div>
@@ -96,7 +96,7 @@ export default function UpdatePrompt() {
       {offlineReady && (
         <div className="toast" role="status" style={{ '--tone': 'var(--green)' }}>
           <CircleCheck size={18} aria-hidden="true" />
-          <p className="toast__msg">Ready to work offline</p>
+          <p className="toast__msg">{t('common.offlineReady')}</p>
         </div>
       )}
     </div>,

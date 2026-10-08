@@ -1,210 +1,191 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Shield, ArrowUpDown, Zap, MessagesSquare, WifiOff, Brain, XCircle,
-  Network, Radio, Map as MapIcon, PlugZap, ChevronLeft, ChevronRight,
-} from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Languages, Wrench } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Button, Card, Logo } from '../components/ui';
-import { roleHome } from '../config/society';
+import { useT, LANGUAGES } from '../i18n';
+import { Card, Logo, Stepper, TypeIcon } from '../components/ui';
+import { APP_NAME, APP_VERSION, roleHome } from '../config/society';
+import '../styles/landing.css';
 
-const PROBLEMS = [
-  { icon: ArrowUpDown, tone: 'var(--indigo)', title: 'The Lift Hazard', desc: 'Average rescue times exceed 45 minutes with zero automated escalation.' },
-  { icon: Zap, tone: 'var(--orange)', title: 'Blind Outages', desc: 'Generators run blindly without grid priority. Exam halls go dark.' },
-  { icon: MessagesSquare, tone: 'var(--green)', title: 'Comms Chaos', desc: 'Alerts travel via uncoordinated WhatsApp groups.' },
-  { icon: WifiOff, tone: 'var(--gray)', title: 'Offline Failure', desc: 'Outages kill local WiFi, rendering web systems useless.' },
-  { icon: Brain, tone: 'var(--purple)', title: 'Manual Dispatch', desc: 'Dispatchers guess which emergency to handle first under panic.' },
+// Facts and links come only from docs/problem-evidence.md
+const STATS = [
+  { id: 1, type: 'lift', source: 'Deccan Herald', href: 'https://deccanherald.com/india/karnataka/bengaluru/four-in-10-bengalureans-dread-stepping-into-a-lift-survey-4098155' },
+  { id: 2, type: 'power', source: 'DT Next', href: 'https://www.dtnext.in/news/chennai/cpm-seeks-action-against-lift-contractor-of-kp-park-over-recent-fatality-793036' },
+  { id: 3, type: 'power', source: 'South First', href: 'https://thesouthfirst.com/news/as-parts-of-chennai-remain-inundated-residents-still-struggle-with-power-outages-toll-rises-to-18' },
+  { id: 4, type: 'lift', source: 'Siasat', href: 'https://www.siasat.com/6-yr-old-falls-between-lift-wall-at-hyderabad-apartments-rescued-3183807/amp/' },
 ];
 
-const FAILED_TOOLS = [
-  { tool: '112 / National Apps', flaw: 'Built for macro national disasters; lacks geofenced building routing.' },
-  { tool: 'WhatsApp Streams', flaw: 'No structured tracking, no priority sorting, zero status feedback.' },
-  { tool: 'Standard Lift Lines', flaw: 'Hardwired lines to unoccupied gates with zero backup triggers.' },
-  { tool: 'Enterprise Software', flaw: 'Prohibitively expensive, lacks local offline resilience.' },
-];
+const STEPS = [1, 2, 3];
 
-const PILLARS = [
-  { icon: Network, tone: 'var(--blue)', title: 'Smart Dispatch', desc: 'Sorts incident categories and auto-escalates delays.' },
-  { icon: Radio, tone: 'var(--teal)', title: 'Offline Stack', desc: 'Keeps emergency messaging functional during network dropouts.' },
-  { icon: MapIcon, tone: 'var(--green)', title: 'Live Command', desc: 'Coordinates real-time active responder geolocations.' },
-  { icon: PlugZap, tone: 'var(--orange)', title: 'Power Routing', desc: 'Intelligently prioritizes grids during loadshedding.' },
-];
+const FEATURES = ['Lift', 'Safety', 'Power', 'Compliance', 'Offline', 'Lang'];
+const AUDIENCE = ['Residents', 'Staff', 'Committee'];
 
-function Tile({ icon: Icon, tone, title, desc }) {
+function IconTile({ icon: Icon, tone, small }) {
   return (
-    <Card className="row" style={{ alignItems: 'flex-start', gap: 'var(--s-3)' }}>
-      <span className="type-icon" style={{ '--tone': tone }} aria-hidden="true">
-        <Icon size={22} />
-      </span>
-      <div className="grow">
-        <h3 className="text-sm bold">{title}</h3>
-        <p className="text-sm muted" style={{ marginTop: 'var(--s-1)' }}>{desc}</p>
-      </div>
-    </Card>
+    <span className={`type-icon${small ? ' type-icon--sm' : ''}`} style={{ '--tone': tone }} aria-hidden="true">
+      <Icon size={small ? 18 : 22} />
+    </span>
   );
 }
 
-function isTypingTarget(el) {
-  if (!el) return false;
-  const tag = el.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
-}
-
 export default function LandingPage() {
-  const navigate = useNavigate();
-  const { user, userProfile } = useAuth();
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const { user, profile } = useAuth();
+  const { t, lang, setLang } = useT();
 
-  const handleEnterPlatform = () => {
-    navigate(user ? roleHome(userProfile?.role) : '/login');
-  };
+  const signedIn = !!(user && profile);
+  const appTarget = signedIn ? roleHome(profile.role) : '/login';
+  const nextLang = LANGUAGES.find(l => l.code !== lang) || LANGUAGES[0];
 
-  const slides = [
-    {
-      id: 'hero',
-      render: () => (
-        <div className="stack center" style={{ alignItems: 'center' }}>
-          <span className="type-icon type-icon--lg" style={{ '--tone': 'var(--primary)' }} aria-hidden="true">
-            <Shield size={28} />
-          </span>
-          <h1 className="text-xl bold">Campus Safety,<br />Rebuilt for Speed.</h1>
-          <p className="muted" style={{ maxWidth: '40ch' }}>
-            Kavach is a fast, role-based safety platform connecting students and emergency responders in real time.
-          </p>
-          <Button size="lg" onClick={handleEnterPlatform}>Enter platform</Button>
-        </div>
-      ),
-    },
-    {
-      id: 'need',
-      render: () => (
-        <div className="stack">
-          <h2 className="text-xl bold center">Why We Built Kavach</h2>
-          <Card accent tone="var(--red)" className="stack-sm" style={{ maxWidth: 640, margin: '0 auto' }}>
-            <p className="bold">&ldquo;A student collapses. The power grid fails. A fire breaks out in the labs.&rdquo;</p>
-            <p className="text-sm muted">
-              In these critical seconds, traditional walkie-talkies, WhatsApp groups, and landlines create chaos.
-              Dispatchers guess priorities. Responders lose time finding exact locations.
-            </p>
-            <p className="text-sm bold">Kavach replaces the noise with targeted, priority-sorted intelligence.</p>
-          </Card>
-        </div>
-      ),
-    },
-    {
-      id: 'problems',
-      render: () => (
-        <div className="stack">
-          <div className="stack-sm center">
-            <h2 className="text-xl bold">Five Problems, One Campus</h2>
-            <p className="muted">Campuses suffer from five critical emergency issues happening simultaneously:</p>
-          </div>
-          <div className="grid-auto">
-            {PROBLEMS.map(p => <Tile key={p.title} {...p} />)}
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: 'solutions',
-      render: () => (
-        <div className="stack">
-          <div className="stack-sm center">
-            <h2 className="text-xl bold">Misfitted Existing Systems</h2>
-            <p className="muted">Standard tools were designed for alternative scales and fail campus needs:</p>
-          </div>
-          <div className="grid-auto">
-            {FAILED_TOOLS.map(s => <Tile key={s.tool} icon={XCircle} tone="var(--orange)" title={s.tool} desc={s.flaw} />)}
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: 'kavach_system',
-      render: () => (
-        <div className="stack">
-          <div className="stack-sm center">
-            <h2 className="text-xl bold">Kavach: Unified Safety</h2>
-            <p className="muted">One system. Three customized user roles. Every campus hazard covered.</p>
-          </div>
-          <div className="grid-auto">
-            {PILLARS.map(p => <Tile key={p.title} {...p} />)}
-          </div>
-          <div className="center">
-            <Button size="lg" onClick={handleEnterPlatform}>
-              <Shield size={20} aria-hidden="true" />
-              Launch safety platform
-            </Button>
-          </div>
-        </div>
-      ),
-    },
+  const previewSteps = [
+    { label: t('common.status_pending'), state: 'done' },
+    { label: t('common.status_acknowledged'), state: 'done' },
+    { label: t('common.status_en_route'), state: 'current' },
+    { label: t('common.status_on_scene'), state: 'todo' },
   ];
 
-  const lastIndex = slides.length - 1;
-  const goTo = (i) => setCurrentSlide(Math.min(Math.max(i, 0), lastIndex));
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-      if (isTypingTarget(e.target)) return;
-      if (e.key === 'ArrowRight') setCurrentSlide(prev => Math.min(prev + 1, lastIndex));
-      else if (e.key === 'ArrowLeft') setCurrentSlide(prev => Math.max(prev - 1, 0));
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [lastIndex]);
-
   return (
-    <div className="page page--wide fade-in stack-lg">
-      <header className="row-between">
-        <div className="row">
-          <Logo size={32} />
-          <span className="text-lg bold">Kavach</span>
+    <div className="landing">
+      <header className="landing__header">
+        <div className="landing__wrap landing__bar">
+          <Link to="/" className="landing__brand" aria-label={t('landing.homeLink')}>
+            <Logo size={30} title={APP_NAME} />
+            <span>{APP_NAME}</span>
+          </Link>
+          <div className="landing__actions">
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              onClick={() => setLang(nextLang.code)}
+              aria-label={`${t('common.language')}: ${nextLang.label}`}
+            >
+              <Languages size={18} aria-hidden="true" />
+              <span lang={nextLang.code}>{nextLang.label}</span>
+            </button>
+            <Link to={appTarget} className="btn btn--secondary btn--sm">
+              {signedIn ? t('landing.openApp') : t('landing.signIn')}
+            </Link>
+          </div>
         </div>
-        <Button variant="secondary" size="sm" onClick={handleEnterPlatform}>Launch</Button>
       </header>
 
-      <main aria-roledescription="carousel" aria-label="About Kavach">
-        <section
-          key={slides[currentSlide].id}
-          className="fade-in"
-          aria-roledescription="slide"
-          aria-label={`${currentSlide + 1} of ${slides.length}`}
-        >
-          {slides[currentSlide].render()}
+      <main className="landing__wrap">
+        {/* a) Hero */}
+        <section className="landing__hero" aria-labelledby="landing-title">
+          <div className="landing__hero-text">
+            <h1 id="landing-title" className="landing__h1">{t('landing.heroTitle')}</h1>
+            <p className="landing__lead">{t('landing.heroSub')}</p>
+            <div className="landing__ctas">
+              <Link to={appTarget} className="btn btn--primary btn--lg">
+                {signedIn ? t('landing.openApp') : t('landing.getStarted')}
+              </Link>
+              <a href="#how" className="btn btn--ghost btn--lg">{t('landing.heroSecondary')}</a>
+            </div>
+          </div>
+
+          <Card className="landing__preview" role="group" aria-label={t('landing.previewLabel')}>
+            <p className="landing__preview-label" aria-hidden="true">{t('landing.previewLabel')}</p>
+            <div className="landing__preview-head">
+              <TypeIcon type="lift" size="lg" />
+              <div>
+                <p className="landing__preview-title">{t('common.type_lift')}</p>
+                <p className="landing__preview-meta">{t('landing.previewWhere')}</p>
+              </div>
+            </div>
+            <Stepper steps={previewSteps} />
+            <p className="landing__preview-who">
+              <IconTile icon={Wrench} tone="var(--orange)" small />
+              {t('landing.previewWho')}
+            </p>
+          </Card>
+        </section>
+
+        {/* b) The problem: plain list, figure in a column, source under the text */}
+        <section id="problem" className="landing__section" aria-labelledby="problem-title">
+          <div className="landing__section-head">
+            <h2 id="problem-title" className="landing__h2">{t('landing.problemTitle')}</h2>
+            <p className="landing__intro">{t('landing.problemIntro')}</p>
+          </div>
+          <ul className="card settings-group landing-facts">
+            {STATS.map(s => (
+              <li key={s.id} className="landing-fact">
+                <p className="landing-fact__value">{t(`landing.stat${s.id}Value`)}</p>
+                <div className="landing-fact__body">
+                  <p className="landing-fact__text">{t(`landing.stat${s.id}Text`)}</p>
+                  <p className="landing-fact__meta">
+                    {t(`landing.stat${s.id}Place`)}
+                    {' · '}
+                    <a href={s.href} target="_blank" rel="noopener noreferrer">
+                      {s.source}
+                      <span className="sr-only"> {t('landing.opensNewTab')}</span>
+                    </a>
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="landing__intro landing__outro">{t('landing.problemOutro')}</p>
+        </section>
+
+        {/* c) How it works */}
+        <section id="how" className="landing__section" aria-labelledby="how-title">
+          <div className="landing__section-head">
+            <h2 id="how-title" className="landing__h2">{t('landing.howTitle')}</h2>
+          </div>
+          <ol className="landing-steps">
+            {STEPS.map(n => (
+              <li key={n} className="landing-step">
+                <h3 className="landing-step__title">{t(`landing.step${n}Title`)}</h3>
+                <p className="landing-step__text">{t(`landing.step${n}Text`)}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* d) What it does */}
+        <section id="features" className="landing__section" aria-labelledby="features-title">
+          <div className="landing__section-head">
+            <h2 id="features-title" className="landing__h2">{t('landing.featuresTitle')}</h2>
+          </div>
+          <ul className="card settings-group landing-list">
+            {FEATURES.map(id => (
+              <li key={id} className="landing-list__row">
+                <h3 className="landing-list__title">{t(`landing.feat${id}Title`)}</h3>
+                <p className="landing-list__text">{t(`landing.feat${id}Text`)}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* e) Built for */}
+        <section id="audience" className="landing__section" aria-labelledby="audience-title">
+          <div className="landing__section-head">
+            <h2 id="audience-title" className="landing__h2">{t('landing.builtTitle')}</h2>
+          </div>
+          <ul className="card settings-group landing-list">
+            {AUDIENCE.map(id => (
+              <li key={id} className="landing-list__row">
+                <h3 className="landing-list__title">{t(`landing.built${id}Title`)}</h3>
+                <p className="landing-list__text">{t(`landing.built${id}Text`)}</p>
+              </li>
+            ))}
+          </ul>
+          <div className="landing__ctas landing__end">
+            <Link to={appTarget} className="btn btn--primary btn--lg">
+              {signedIn ? t('landing.openApp') : t('landing.getStarted')}
+            </Link>
+          </div>
         </section>
       </main>
 
-      <nav className="stack-sm" aria-label="Slides" style={{ alignItems: 'center' }}>
-        <div className="row" style={{ gap: 0 }}>
-          {slides.map((s, idx) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => goTo(idx)}
-              aria-label={`Go to slide ${idx + 1}`}
-              aria-current={idx === currentSlide ? 'step' : undefined}
-              style={{ width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <span
-                className="type-icon"
-                aria-hidden="true"
-                style={{ '--tone': idx === currentSlide ? 'var(--primary)' : 'var(--border)', width: idx === currentSlide ? 20 : 8, height: 8, borderRadius: 4 }}
-              />
-            </button>
-          ))}
+      <footer className="landing__footer">
+        <div className="landing__wrap landing__footer-inner">
+          <p className="landing__footer-brand">
+            <Logo size={20} title={APP_NAME} />
+            {APP_NAME}
+          </p>
+          <p className="landing__small">{t('landing.smallPrint')}</p>
+          <p>{t('common.version', { v: APP_VERSION })}</p>
         </div>
-        <div className="row" style={{ gap: 'var(--s-3)' }}>
-          <Button variant="secondary" onClick={() => goTo(currentSlide - 1)} disabled={currentSlide === 0} aria-label="Previous slide">
-            <ChevronLeft size={20} aria-hidden="true" /> Prev
-          </Button>
-          <span className="text-sm muted" aria-live="polite">{currentSlide + 1} / {slides.length}</span>
-          <Button variant="secondary" onClick={() => goTo(currentSlide + 1)} disabled={currentSlide === lastIndex} aria-label="Next slide">
-            Next <ChevronRight size={20} aria-hidden="true" />
-          </Button>
-        </div>
-      </nav>
+      </footer>
     </div>
   );
 }

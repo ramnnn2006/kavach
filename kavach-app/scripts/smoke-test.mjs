@@ -106,7 +106,8 @@ const { data: rep, error: repErr } = await lakshmi.rpc('report_summary', { p_fro
 ok(!repErr && Array.isArray(rep), `admin report_summary works (${rep?.length} types)`);
 
 // Responder asset permissions
-const { data: liftAsset } = await suresh.from('assets').select('id').eq('kind', 'lift').limit(1).single();
+// Pick a lift that is already ok, so the update is a no-op and demo data is untouched
+const { data: liftAsset } = await suresh.from('assets').select('id').eq('kind', 'lift').eq('state', 'ok').limit(1).single();
 const { data: firePump } = await suresh.from('assets').select('id').eq('kind', 'fire_pump').limit(1).single();
 ok(!(await suresh.rpc('set_asset_status', { p_asset_id: liftAsset.id, p_state: 'ok' })).error, 'maintenance responder updates lift status');
 ok((await suresh.rpc('set_asset_status', { p_asset_id: firePump.id, p_state: 'ok' })).error?.message === 'forbidden', 'maintenance responder cannot update fire pump');

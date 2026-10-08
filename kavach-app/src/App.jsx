@@ -6,6 +6,7 @@ import { DialogProvider } from './context/DialogContext';
 import { I18nProvider } from './i18n';
 import { updateMyProfile } from './data/db';
 import ToastContainer from './components/ToastContainer';
+import UpdatePrompt from './components/UpdatePrompt';
 import ConnectionBanner from './components/ConnectionBanner';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Spinner } from './components/ui';
@@ -152,6 +153,7 @@ function LocalizedApp() {
         <ToastProvider>
           <AppRoutes />
           <ToastContainer />
+          <UpdatePrompt />
         </ToastProvider>
       </DialogProvider>
     </I18nProvider>

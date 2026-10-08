@@ -1,7 +1,8 @@
 // Shared UI primitives. Styling lives in src/styles/components.css.
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronLeft } from 'lucide-react';
 import { getType, getStatus } from '../../config/society';
+import { useT } from '../../i18n';
 
 const cx = (...parts) => parts.filter(Boolean).join(' ');
 
@@ -41,15 +42,16 @@ export function Card({ as: Tag = 'div', interactive, accent, tone, flush, classN
 // back: true → navigate(-1) with fallback; string → navigate to that path
 export function PageHeader({ title, eyebrow, subtitle, back, action, compact }) {
   const navigate = useNavigate();
+  const { t } = useT();
   const goBack = () => {
     if (typeof back === 'string') navigate(back);
     else if (window.history.length > 1) navigate(-1);
     else navigate('/');
   };
-  return (
+  const row = (
     <header className={cx('page-header', compact && 'page-header--compact')}>
-      {back && (
-        <IconButton label="Back" onClick={goBack}>
+      {back && compact && (
+        <IconButton label={t('common.back')} onClick={goBack}>
           <ArrowLeft size={22} />
         </IconButton>
       )}
@@ -60,6 +62,18 @@ export function PageHeader({ title, eyebrow, subtitle, back, action, compact }) 
       </div>
       {action}
     </header>
+  );
+  if (!back || compact) return row;
+  return (
+    <>
+      <nav className="page-nav" aria-label={t('common.back')}>
+        <button type="button" className="page-nav__back" onClick={goBack}>
+          <ChevronLeft size={26} aria-hidden="true" />
+          {t('common.back')}
+        </button>
+      </nav>
+      {row}
+    </>
   );
 }
 
@@ -72,8 +86,9 @@ export function Badge({ tone, children, className }) {
 }
 
 export function StatusBadge({ status, staff }) {
-  const s = getStatus(status);
-  return <Badge tone={s.tone}>{staff ? s.staffLabel : s.label}</Badge>;
+  const { t } = useT();
+  const key = staff ? `common.staffStatus_${status}` : `common.status_${status}`;
+  return <Badge tone={getStatus(status).tone}>{t(key)}</Badge>;
 }
 
 export function TypeIcon({ type, size = 'md' }) {
@@ -150,7 +165,7 @@ export function Stepper({ steps }) {
 export function EmptyState({ icon: Icon, title, text, action }) {
   return (
     <div className="empty">
-      {Icon && <Icon size={40} aria-hidden="true" />}
+      {Icon && <Icon size={28} aria-hidden="true" />}
       <p className="empty__title">{title}</p>
       {text && <p className="empty__text">{text}</p>}
       {action && <div style={{ marginTop: 'var(--s-2)' }}>{action}</div>}
@@ -176,7 +191,9 @@ export function Stat({ value, label, tone }) {
   );
 }
 
-export function Spinner({ large, label = 'Loading' }) {
+export function Spinner({ large, label }) {
+  const { t } = useT();
+  label = label || t('common.loading');
   return <span className={cx('spinner', large && 'spinner--lg')} role="status" aria-label={label} />;
 }
 

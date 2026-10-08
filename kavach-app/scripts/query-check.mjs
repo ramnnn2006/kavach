@@ -1,0 +1,31 @@
+// Checks the non-trivial select strings used by src/data/db.js against the live project.
+import { readFileSync } from 'node:fs';
+import { createClient } from '@supabase/supabase-js';
+const env = Object.fromEntries(readFileSync(new URL('../.env', import.meta.url), 'utf8').split('\n').filter(l => l.includes('=')).map(l => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()]));
+const accts = Object.fromEntries(readFileSync(new URL('../../docs/demo-accounts.md', import.meta.url), 'utf8').split('\n').filter(l => l.includes('@alpha.demo')).map(l => l.split('|').map(s => s.trim())).map(c => [c[3].split('@')[0], { email: c[3], password: c[4].replace(/`/g, '') }]));
+async function as(n) { const c = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: false } }); const { error } = await c.auth.signInWithPassword(accts[n]); if (error) throw error; return c; }
+const PROFILE = 'id, society_id, full_name, email, phone, role, specialties, on_duty, flat_id, language, vulnerability, first_responder_skill, flat:flats(id, number, floor, zone_id, zone:zones(id, name, code)), society:societies(id, name, city, security_phone, power_source)';
+const CHECKS = 'id, asset_id, zone_id, kind, title, interval_days, due_at, last_done_at, notes, asset:assets(id, name, kind), zone:zones(id, name), done_by_profile:profiles!asset_checks_done_by_fkey(full_name)';
+const MEMBERS = 'id, full_name, email, phone, role, specialties, on_duty, flat_id, first_responder_skill, vulnerability, updated_at, flat:flats(number, floor, zone:zones(name))';
+const ASSETS = 'id, zone_id, kind, name, code, state, vendor, amc_expires_on, licence_expires_on, notes, state_changed_at, zone:zones(id, name)';
+let bad = 0;
+const check = (name, { data, error }) => { console.log(`${error ? 'FAIL' : 'ok  '} ${name}${error ? ' — ' + error.message : ` (${Array.isArray(data) ? data.length + ' rows' : data ? 'row' : 'null'})`}`); if (error) bad++; return data; };
+const priya = await as('priya'); const suresh = await as('suresh'); const lakshmi = await as('lakshmi');
+const pid = (await priya.auth.getUser()).data.user.id;
+const p = check('profile with flat+zone+society', await priya.from('profiles').select(PROFILE).eq('id', pid).maybeSingle());
+console.log('     →', p?.flat?.number, p?.flat?.zone?.name, p?.society?.name);
+check('notices or-filter', await priya.from('notices').select('id, title').or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`).order('pinned', { ascending: false }));
+check('checks with embeds (suresh)', await suresh.from('asset_checks').select(CHECKS).order('due_at'));
+check('assets with zone', await suresh.from('assets').select(ASSETS).order('kind'));
+check('power events embed', await lakshmi.from('power_events').select('id, source, switched_at, note, by:profiles(full_name)').limit(5));
+check('v_compliance', await suresh.from('v_compliance').select('*').order('due_at'));
+check('v_team (admin)', await lakshmi.from('v_team').select('*'));
+check('members (admin)', await lakshmi.from('profiles').select(MEMBERS).order('role'));
+check('society', await priya.from('societies').select('id, name, power_source, escalate_l2_after').maybeSingle());
+check('contacts', await priya.from('contacts').select('*').order('kind'));
+check('zones', await priya.from('zones').select('id, name, kind, floors').order('sort_order'));
+check('active safety check', await priya.from('safety_checks').select('id, scope, zone:zones(id, name)').is('ended_at', null).limit(1).maybeSingle());
+check('report_monthly', await lakshmi.rpc('report_monthly', { p_months: 6 }));
+check('report_by_asset', await lakshmi.rpc('report_by_asset', { p_from: '2026-01-01', p_to: '2027-01-01' }));
+check('residents see v_team? (expect 0 rows)', await priya.from('v_team').select('id'));
+console.log(bad ? `${bad} FAILED` : 'ALL OK');

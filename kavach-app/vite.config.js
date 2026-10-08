@@ -28,28 +28,17 @@ export default defineConfig(({ command, mode }) => {
     plugins: [
       react(),
       VitePWA({
+        // Custom service worker (src/sw.js): same precache / navigation / NetworkOnly rules as before,
+        // plus Web Push handlers. Workbox injects the precache manifest into self.__WB_MANIFEST.
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.js',
         registerType: 'prompt',
         injectRegister: false, // registered from src/components/UpdatePrompt.jsx
         devOptions: { enabled: false },
-        includeManifestIcons: false, // icons are already matched by workbox.globPatterns
-        workbox: {
-          navigateFallback: '/index.html',
-          navigateFallbackDenylist: [
-            /^\/auth\//,
-            /^\/rest\//,
-            /^\/realtime\//,
-            /^\/functions\//,
-            /\/[^/?]+\.[^/]+$/, // anything that looks like a file
-          ],
-          cleanupOutdatedCaches: true,
+        includeManifestIcons: false, // icons are already matched by injectManifest.globPatterns
+        injectManifest: {
           globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-          runtimeCaching: [
-            {
-              // Supabase API/auth/realtime must always hit the network — never serve stale data.
-              urlPattern: ({ url }) => url.hostname.endsWith('supabase.co'),
-              handler: 'NetworkOnly',
-            },
-          ],
         },
         manifest: {
           id: '/',

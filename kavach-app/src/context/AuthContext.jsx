@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { clearOutbox } from '../data/outbox';
 
 const AuthContext = createContext(null);
 
@@ -115,6 +116,7 @@ export function AuthProvider({ children }) {
       currentUserId.current = null;
       setSession(null);
       setProfile(null);
+      clearOutbox().catch(() => { /* nothing queued */ });
       try {
         sessionStorage.clear();
         Object.keys(localStorage).filter(k => k.startsWith('kavach_cache')).forEach(k => localStorage.removeItem(k));

@@ -1,4 +1,5 @@
 import { CircleCheck, CircleAlert, Info, X } from 'lucide-react';
+import { useT } from '../i18n';
 
 const KINDS = {
   success: { icon: CircleCheck, tone: 'var(--green)' },
@@ -7,12 +8,13 @@ const KINDS = {
 };
 
 export default function Toast({ id, message, type = 'info', onDismiss }) {
+  const { t } = useT();
   const { icon: Icon, tone } = KINDS[type] || KINDS.info;
   return (
     <div className="toast" style={{ '--tone': tone }} role={type === 'error' ? 'alert' : 'status'}>
       <Icon size={18} aria-hidden="true" />
       <p className="toast__msg">{message}</p>
-      <button className="toast__close" onClick={() => onDismiss(id)} aria-label="Dismiss">
+      <button className="toast__close" onClick={() => onDismiss(id)} aria-label={t('common.dismiss')}>
         <X size={16} aria-hidden="true" />
       </button>
     </div>
