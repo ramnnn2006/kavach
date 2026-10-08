@@ -26,12 +26,12 @@ Responder specialties (incident types they handle):
 
 | Role | Name | Specialty / detail |
 | --- | --- | --- |
-| resident | Priya Raman | Tower A, flat A-1204 |
-| resident | Arjun Mehta | Tower C, flat C-0703 |
-| responder | Suresh Kumar | Maintenance (lift, power, water) |
-| responder | Ramesh Iyer | Security (fire, medical, security) |
-| admin | Lakshmi Narayanan | RWA secretary |
-| admin | Vikram Rao | Facility manager |
+| resident | Chloe Hall | Tower A, flat A-1204 |
+| resident | Ben Cole | Tower C, flat C-0703 |
+| responder | Sam Ward | Maintenance (lift, power, water) |
+| responder | Max Reed | Security (fire, medical, security) |
+| admin | Lily Page | RWA secretary |
+| admin | Jack Lane | Facility manager |
 
 Emails `<firstname>@alpha.demo` with strong per-account passwords stored only in local `docs/demo-accounts.md`.
 
