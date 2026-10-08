@@ -27,8 +27,8 @@
 .rsp-status { display: inline-flex; align-items: center; gap: 6px; }
 .rsp-status__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tone, var(--gray)); flex-shrink: 0; }
 .rsp-flags { display: flex; flex-wrap: wrap; column-gap: var(--s-2); margin-top: 2px; font-size: var(--fs-footnote); font-weight: 600; }
-.rsp-flag--red { color: var(--red); }
-.rsp-flag--purple { color: var(--purple); }
+.rsp-flag--red { color: var(--danger); }
+.rsp-flag--purple { color: color-mix(in srgb, var(--purple) 70%, var(--text)); }
 
 /* ── Alerts: duty row ─────────────────────────────── */
 .rsp-duty { min-height: 64px; }
@@ -100,7 +100,7 @@ button.rsp-alert__link:hover { background: var(--fill); }
 .rsp-dialog > .dialog__actions { margin-top: var(--s-3); }
 .rsp-pick-list .settings-row { min-height: 64px; }
 .rsp-pick-list .settings-row:disabled { opacity: 0.6; }
-.rsp-on-duty { color: var(--green); }
+.rsp-on-duty { color: var(--success); }
 .rsp-check-mark { color: var(--primary); flex-shrink: 0; }
 .rsp-segmented-grid .segmented { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .rsp-segmented-grid .segmented__item { padding: 0 var(--s-2); min-height: 44px; }
@@ -120,7 +120,7 @@ button.rsp-alert__link:hover { background: var(--fill); }
 .rsp-info { padding-top: 10px; padding-bottom: 10px; }
 .rsp-info__label { font-size: var(--fs-caption); color: var(--text-muted); }
 .rsp-info__value { font-size: var(--fs-body); overflow-wrap: anywhere; }
-.rsp-danger-row { color: var(--red); }
+.rsp-danger-row { color: var(--danger); }
 
 /* Timeline */
 .rsp-timeline { list-style: none; margin: 0; padding: 0; }
@@ -162,15 +162,15 @@ button.rsp-alert__link:hover { background: var(--fill); }
 .rsp-check > .type-icon { align-self: flex-start; margin-top: 2px; }
 .rsp-check > .btn { flex-shrink: 0; }
 .rsp-check__due { margin-top: 2px; font-size: var(--fs-footnote); color: var(--text-muted); }
-.rsp-check__due--flag { color: var(--tone); font-weight: 600; }
+.rsp-check__due--flag { color: color-mix(in srgb, var(--tone) 55%, var(--text)); font-weight: 600; }
 
 /* ── Assets & history rows ────────────────────────── */
 .rsp-asset, .rsp-history { align-items: flex-start; padding-top: 12px; padding-bottom: 12px; }
 .rsp-asset > .type-icon, .rsp-history > .type-icon { margin-top: 2px; }
 .rsp-asset > .rsp-chevron, .rsp-history > .rsp-chevron { align-self: center; }
 .rsp-asset__changed { font-size: var(--fs-caption); color: var(--text-muted); margin-top: 2px; }
-.rsp-asset__warn { font-size: var(--fs-footnote); font-weight: 600; color: var(--tone); margin-top: 2px; }
-.rsp-asset__state { font-size: var(--fs-subhead); color: var(--tone, var(--text-muted)); }
+.rsp-asset__warn { font-size: var(--fs-footnote); font-weight: 600; color: color-mix(in srgb, var(--tone) 55%, var(--text)); margin-top: 2px; }
+.rsp-asset__state { font-size: var(--fs-subhead); color: color-mix(in srgb, var(--tone, var(--text-muted)) 55%, var(--text)); }
 .rsp-asset__state--trail { display: none; align-self: center; max-width: 40%; text-align: right; }
 .rsp-asset__state--inline { display: block; margin-top: 2px; font-size: var(--fs-footnote); }
 /* Room for a trailing value once the row is wide enough */

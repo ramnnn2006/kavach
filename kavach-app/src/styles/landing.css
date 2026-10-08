@@ -168,7 +168,7 @@ html[lang="ta"] .landing__h2 { line-height: 1.3; }
 }
 .landing-fact__text { line-height: 1.45; }
 .landing-fact__meta { margin-top: var(--s-1); font-size: var(--fs-footnote); color: var(--text-muted); }
-.landing-fact__meta a { display: inline-block; padding: 10px 0; margin: -10px 0; }
+.landing-fact__meta a { display: inline-block; padding: 13px 6px; margin: -13px -6px; }
 @media (max-width: 420px) {
   .landing-fact { grid-template-columns: minmax(0, 1fr); gap: var(--s-1); }
 }

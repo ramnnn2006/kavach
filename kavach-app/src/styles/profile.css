@@ -43,7 +43,7 @@ main.page:has(> .bottom-nav) > .profile { max-width: 680px; }
 .profile-field__control { flex: 1; min-width: 0; }
 .profile-field__input {
   width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -52,7 +52,8 @@ main.page:has(> .bottom-nav) > .profile { max-width: 680px; }
 }
 .profile-field__input:focus { outline: none; }
 .profile-field:focus-within { background: var(--fill); }
-.profile-field__input::placeholder { color: var(--text-tertiary); }
+.profile-field:has(.profile-field__input:focus-visible) { outline: 2px solid var(--primary); outline-offset: -2px; }
+.profile-field__input::placeholder { color: var(--text-muted); }
 .profile-field__input[aria-invalid="true"] { color: var(--danger); }
 .profile-field__error { font-size: var(--fs-footnote); color: var(--danger); padding-bottom: var(--s-1); }
 .profile-field__value { flex: 1; min-width: 0; color: var(--text-muted); overflow-wrap: anywhere; }

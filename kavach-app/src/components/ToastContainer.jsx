@@ -7,7 +7,7 @@ export default function ToastContainer() {
   const ctx = useContext(ToastContext);
   if (!ctx) return null;
   return createPortal(
-    <div className="toasts">
+    <div className="toasts" aria-live="polite" aria-relevant="additions">
       {ctx.toasts.map((t) => (
         <Toast key={t.id} id={t.id} message={t.message} type={t.type} onDismiss={ctx.dismiss} />
       ))}

@@ -27,6 +27,7 @@ export default function NotFound() {
       <div className="not-found">
         <EmptyState
           icon={MapPinOff}
+          titleAs="h1"
           title={t('landing.notFoundTitle')}
           text={t('landing.notFoundText')}
           action={<Button onClick={() => navigate(target, { replace: true })}>{label}</Button>}

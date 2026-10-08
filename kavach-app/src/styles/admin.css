@@ -23,7 +23,7 @@
 .admin-more-link { padding: 0 var(--s-3); }
 .admin-row-link { color: var(--text); text-decoration: none; }
 .admin-row-link:hover { background: var(--fill); }
-.admin-icon-danger { color: var(--red); }
+.admin-icon-danger { color: var(--danger); }
 .admin-icon-danger:disabled { opacity: 0.4; }
 
 /* Tinted text, mixed toward the label colour so it stays readable on white and black */
@@ -293,7 +293,7 @@ button.admin-member__main:hover { background: var(--fill); }
 .settings-row.admin-form-row { min-height: 52px; }
 .admin-form-row__label { display: block; }
 .admin-form-row__hint { display: block; font-size: var(--fs-footnote); color: var(--text-muted); }
-.admin-date { width: auto; min-height: 40px; padding: 6px 10px; flex-shrink: 0; font-size: var(--fs-subhead); }
+.admin-date { width: auto; min-height: 44px; padding: 6px 10px; flex-shrink: 0; font-size: var(--fs-subhead); }
 
 /* ── Notices ──────────────────────────────────────── */
 .settings-row.admin-notice { align-items: flex-start; padding-top: 12px; padding-bottom: 12px; padding-right: var(--s-2); gap: var(--s-2); }
@@ -320,7 +320,7 @@ button.admin-member__main:hover { background: var(--fill); }
 .admin-live-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
 .admin-check-live__meta { font-size: var(--fs-footnote); color: var(--text-muted); margin-top: 2px; }
 .admin-check-live__count { font-size: var(--fs-subhead); font-weight: 600; }
-.admin-btn-destructive { color: var(--red); }
+.admin-btn-destructive { color: var(--danger); }
 .admin-quote {
   margin: 0;
   padding: var(--s-2) var(--s-3);

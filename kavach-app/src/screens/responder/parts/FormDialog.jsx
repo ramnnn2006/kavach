@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
+const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])';
+
 // Modal shell with the shared .dialog look, left-aligned for forms and lists.
 export default function FormDialog({ title, text, onClose, busy, wide, children }) {
   const ref = useRef(null);
@@ -14,7 +16,18 @@ export default function FormDialog({ title, text, onClose, busy, wide, children 
   }, []);
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape' && !busy) onClose(); };
+    const node = ref.current;
+    const onKey = (e) => {
+      if (e.key === 'Escape' && !busy) onClose();
+      if (e.key === 'Tab' && node) {
+        const items = [...node.querySelectorAll(FOCUSABLE)];
+        if (!items.length) { e.preventDefault(); node.focus(); return; }
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (e.shiftKey && (document.activeElement === first || document.activeElement === node)) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [busy, onClose]);

@@ -29,10 +29,12 @@
   --gray: #8e8e93;
 
   /* Semantic roles */
-  --primary: var(--blue);
-  --danger: var(--red);
+  /* Light mode: text/fill roles are a touch deeper than the raw system colours so
+     white-on-accent buttons and accent text reach WCAG AA (4.5:1). */
+  --primary: #0062cc;
+  --danger: #d3281e;
   --warning: var(--orange);
-  --success: var(--green);
+  --success: #1f7a36;
   --on-accent: #ffffff;
 
   /* Incident type tints */
@@ -106,6 +108,10 @@ html.dark {
   --purple: #bf5af2;
   --pink: #ff375f;
   --gray: #8e8e93;
+
+  --primary: var(--blue);
+  --danger: var(--red);
+  --success: var(--green);
 }
 
 html.large-text {

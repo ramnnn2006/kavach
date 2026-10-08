@@ -162,11 +162,11 @@ export function Stepper({ steps }) {
   );
 }
 
-export function EmptyState({ icon: Icon, title, text, action }) {
+export function EmptyState({ icon: Icon, title, text, action, titleAs: Title = 'p' }) {
   return (
     <div className="empty">
       {Icon && <Icon size={28} aria-hidden="true" />}
-      <p className="empty__title">{title}</p>
+      <Title className="empty__title">{title}</Title>
       {text && <p className="empty__text">{text}</p>}
       {action && <div style={{ marginTop: 'var(--s-2)' }}>{action}</div>}
     </div>
