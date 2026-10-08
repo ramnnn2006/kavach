@@ -59,3 +59,16 @@ export function newClientId() {
   const h = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 }
+
+// Incident events whose note is worth showing to the resident
+export const NOTE_ACTIONS = ['resolved', 'status_changed', 'note_added'];
+// Status moves the progress steps already show (with their times); escalation has its own banner
+const STEP_ACTIONS = ['created', 'claimed', 'status_changed', 'resolved', 'escalated'];
+
+/** Events worth listing. With hideSteps, plain status moves are left to the progress steps. */
+export function visibleEvents(events, hideSteps) {
+  if (!events?.length) return [];
+  if (!hideSteps) return events;
+  return events.filter(ev => !STEP_ACTIONS.includes(ev.action) || (ev.note && NOTE_ACTIONS.includes(ev.action)));
+}
+

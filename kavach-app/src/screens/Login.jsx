@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Lock, User, Phone, Eye, EyeOff, Languages } from 'lucide-react';
+import { Eye, EyeOff, Languages } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useT, LANGUAGES } from '../i18n';
@@ -131,37 +131,28 @@ export default function Login() {
           {isSignup && (
             <>
               <Field label={t('auth.fullName')} htmlFor="name" error={errors.name}>
-                <div className="input-wrap">
-                  <span className="input-wrap__icon"><User size={18} aria-hidden="true" /></span>
-                  <input id="name" name="name" className={`input ${errors.name ? 'input--error' : ''}`} autoComplete="name"
-                    value={form.name} onChange={onChange} onBlur={onBlur} aria-invalid={!!errors.name} />
-                </div>
+                <input id="name" name="name" className={`input ${errors.name ? 'input--error' : ''}`} autoComplete="name"
+                  value={form.name} onChange={onChange} onBlur={onBlur} aria-invalid={!!errors.name} />
               </Field>
               <Field label={t('auth.phone')} htmlFor="phone" error={errors.phone} hint={t('auth.phoneHint')}>
-                <div className="input-wrap">
-                  <span className="input-wrap__icon"><Phone size={18} aria-hidden="true" /></span>
-                  <input id="phone" name="phone" type="tel" inputMode="tel" className={`input ${errors.phone ? 'input--error' : ''}`}
-                    autoComplete="tel" value={form.phone} onChange={onChange} onBlur={onBlur} aria-invalid={!!errors.phone} />
-                </div>
+                <input id="phone" name="phone" type="tel" inputMode="tel" className={`input ${errors.phone ? 'input--error' : ''}`}
+                  autoComplete="tel" value={form.phone} onChange={onChange} onBlur={onBlur} aria-invalid={!!errors.phone} />
               </Field>
             </>
           )}
 
           <Field label={t('auth.email')} htmlFor="email" error={errors.email}>
-            <div className="input-wrap">
-              <span className="input-wrap__icon"><Mail size={18} aria-hidden="true" /></span>
-              <input id="email" name="email" type="email" inputMode="email" className={`input ${errors.email ? 'input--error' : ''}`}
-                autoComplete="email" value={form.email} onChange={onChange} onBlur={onBlur} aria-invalid={!!errors.email} />
-            </div>
+            <input id="email" name="email" type="email" inputMode="email" className={`input ${errors.email ? 'input--error' : ''}`}
+              autoComplete="email" value={form.email} onChange={onChange} onBlur={onBlur} aria-invalid={!!errors.email} />
           </Field>
 
           <Field label={t('auth.password')} htmlFor="password" error={errors.password} hint={isSignup ? t('auth.passwordHint') : undefined}>
             <div className="input-wrap">
-              <span className="input-wrap__icon"><Lock size={18} aria-hidden="true" /></span>
               <input id="password" name="password" type={showPassword ? 'text' : 'password'}
                 className={`input input--trail ${errors.password ? 'input--error' : ''}`}
                 autoComplete={isSignup ? 'new-password' : 'current-password'}
-                value={form.password} onChange={onChange} onBlur={onBlur} aria-invalid={!!errors.password} />
+                value={form.password} onChange={onChange} onBlur={onBlur} aria-invalid={!!errors.password}
+                style={{ paddingLeft: 'var(--s-3)' }} />
               <span className="input-wrap__trail">
                 <button type="button" className="icon-btn" onClick={() => setShowPassword(s => !s)}
                   aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')} aria-pressed={showPassword}>

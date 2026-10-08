@@ -27,7 +27,7 @@ export default function Society() {
   };
 
   return (
-    <main className="page admin-page">
+    <main className="page admin-page admin-narrow">
       <PageHeader
         eyebrow={profile?.society?.name}
         title={t('common.nav_society')}

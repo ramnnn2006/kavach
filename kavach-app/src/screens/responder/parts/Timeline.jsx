@@ -5,18 +5,10 @@ import { dateTime } from '../../../utils/time';
 const VISIBLE = 6;
 const STATUS_SENTENCE = ['acknowledged', 'en_route', 'on_scene'];
 
+// Grey by default; colour only for the two events that change the outcome
 const TONE = {
-  created: 'var(--orange)',
-  claimed: 'var(--blue)',
-  assigned: 'var(--blue)',
-  reassigned: 'var(--blue)',
-  status_changed: 'var(--indigo)',
   resolved: 'var(--green)',
-  cancelled: 'var(--gray)',
   escalated: 'var(--red)',
-  note_added: 'var(--gray)',
-  details_updated: 'var(--gray)',
-  first_responder_ack: 'var(--pink)',
 };
 
 function describeEvent(ev, t) {

@@ -1,20 +1,17 @@
 // Society → Compliance: scheduled checks (overdue / due soon / up to date) and AMC / licence renewals.
 import { useState } from 'react';
-import { CalendarClock, ClipboardCheck } from 'lucide-react';
-import { Badge, Button, EmptyState } from '../../../components/ui';
+import { ClipboardCheck } from 'lucide-react';
+import { Button, EmptyState } from '../../../components/ui';
 import { errorMessage, listenAssets, listenCompliance, logAssetCheck } from '../../../data/db';
 import { useConfirm } from '../../../context/DialogContext';
 import { useToast } from '../../../context/ToastContext';
 import { useT } from '../../../i18n';
 import { useLive, useNow } from './hooks';
 import { daysUntil, shortDate } from './format';
+import { assetKind } from './assetKinds';
 import { IconTile, LoadError, Loading } from './ui';
 
-const GROUPS = [
-  { key: 'overdue', tone: 'var(--red)' },
-  { key: 'due_soon', tone: 'var(--orange)' },
-  { key: 'ok', tone: 'var(--green)' },
-];
+const GROUPS = [{ key: 'overdue' }, { key: 'due_soon' }, { key: 'ok' }];
 const RENEWAL_WINDOW_DAYS = 30;
 
 function dueText(c, t) {
@@ -64,6 +61,7 @@ export default function CompliancePanel() {
   renewals.sort((a, b) => a.days - b.days);
 
   const list = checks.data || [];
+  const needsWork = list.filter(c => c.compliance_status !== 'ok').length;
 
   return (
     <div className="stack-lg">
@@ -74,48 +72,50 @@ export default function CompliancePanel() {
           <EmptyState icon={ClipboardCheck} title={t('admin.noChecks')} text={t('admin.noChecksText')} />
         </div>
       )}
+      {list.length > 0 && needsWork === 0 && (
+        <p className="card text-sm muted">{t('admin.complianceAllClear')}</p>
+      )}
       {list.length > 0 && GROUPS.map(g => {
         const items = list.filter(c => c.compliance_status === g.key);
+        if (!items.length) return null;
         return (
           <section key={g.key} aria-labelledby={`cg-${g.key}`}>
-            <h2 id={`cg-${g.key}`} className="section-title admin-count-title">
-              <span>{t(`admin.compliance_${g.key}`)}</span>
-              <Badge tone={items.length ? g.tone : undefined}>{items.length}</Badge>
+            <h2 id={`cg-${g.key}`} className="section-title">
+              {t(`admin.compliance_${g.key}`)} · {items.length}
             </h2>
-            {items.length === 0 ? (
-              <p className="card text-sm muted">{t(`admin.complianceNone_${g.key}`)}</p>
-            ) : (
-              <div className="card settings-group">
-                {items.map(c => {
-                  const due = dueText(c, t);
-                  return (
-                    <div key={c.id} className="settings-row admin-check-row">
-                      <IconTile icon={ClipboardCheck} tone={g.tone} />
-                      <div className="grow admin-check-row__body">
-                        <p className="semibold">{c.title}</p>
-                        <p className="text-sm muted">
-                          {[c.asset_name || c.zone_name, t('admin.dueOn', { date: shortDate(c.due_at, lang) })].filter(Boolean).join(' · ')}
-                        </p>
-                        {due && <p className={`text-sm semibold ${g.key === 'overdue' ? 'admin-text-red' : 'admin-warn-text'}`}>{due}</p>}
-                        {c.last_done_at && (
-                          <p className="text-xs muted">{t('admin.lastDone', { date: shortDate(c.last_done_at, lang) })}</p>
-                        )}
-                      </div>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="admin-btn-44"
-                        loading={busyId === c.id}
-                        onClick={() => markDone(c)}
-                        aria-label={t('admin.markDoneName', { title: c.title })}
-                      >
-                        {t('admin.markDone')}
-                      </Button>
+            <div className="card settings-group">
+              {items.map(c => {
+                const due = dueText(c, t);
+                const kind = c.asset_kind ? assetKind(c.asset_kind) : { icon: ClipboardCheck, tone: 'var(--gray)' };
+                return (
+                  <div key={c.id} className="settings-row admin-check-row">
+                    <IconTile icon={kind.icon} tone={kind.tone} />
+                    <div className="grow admin-check-row__body">
+                      <p className="admin-check-row__title">{c.title}</p>
+                      <p className="admin-check-row__meta">
+                        {[c.asset_name || c.zone_name, t('admin.dueOn', { date: shortDate(c.due_at, lang) })].filter(Boolean).join(' · ')}
+                      </p>
+                      {due && (
+                        <p className={`admin-check-row__due ${g.key === 'overdue' ? 'admin-text-red' : 'admin-warn-text'}`}>{due}</p>
+                      )}
+                      <p className="admin-check-row__meta">
+                        {c.last_done_at ? t('admin.lastDone', { date: shortDate(c.last_done_at, lang) }) : t('admin.neverDone')}
+                      </p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="admin-btn-44 admin-row-action"
+                      loading={busyId === c.id}
+                      onClick={() => markDone(c)}
+                      aria-label={t('admin.markDoneName', { title: c.title })}
+                    >
+                      {t('admin.markDone')}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
           </section>
         );
       })}
@@ -128,22 +128,25 @@ export default function CompliancePanel() {
         )}
         {renewals.length > 0 && (
           <div className="card settings-group">
-            {renewals.map(r => (
-              <div key={r.id} className="settings-row">
-                <IconTile icon={CalendarClock} tone={r.days < 0 ? 'var(--red)' : 'var(--orange)'} />
-                <div className="grow">
-                  <p className="semibold">{r.asset.name}</p>
-                  <p className="text-sm muted">
-                    {[t(`admin.renewal_${r.kind}`), r.asset.vendor].filter(Boolean).join(' · ')}
-                  </p>
+            {renewals.map(r => {
+              const kind = assetKind(r.asset.kind);
+              return (
+                <div key={r.id} className="settings-row admin-check-row">
+                  <IconTile icon={kind.icon} tone={kind.tone} />
+                  <div className="grow admin-check-row__body">
+                    <p className="admin-check-row__title">{r.asset.name}</p>
+                    <p className="admin-check-row__meta">
+                      {[t(`admin.renewal_${r.kind}`), r.asset.vendor].filter(Boolean).join(' · ')}
+                    </p>
+                    <p className={`admin-check-row__due ${r.days < 0 ? 'admin-text-red' : 'admin-warn-text'}`}>
+                      {r.days < 0
+                        ? t('admin.expiredOn', { date: shortDate(r.date, lang) })
+                        : t('admin.expiresOn', { date: shortDate(r.date, lang) })}
+                    </p>
+                  </div>
                 </div>
-                <Badge className="admin-badge-wrap" tone={r.days < 0 ? 'var(--red)' : 'var(--orange)'}>
-                  {r.days < 0
-                    ? t('admin.expiredOn', { date: shortDate(r.date, lang) })
-                    : t('admin.expiresOn', { date: shortDate(r.date, lang) })}
-                </Badge>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

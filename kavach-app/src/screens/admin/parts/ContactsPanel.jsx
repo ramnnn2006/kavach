@@ -1,6 +1,6 @@
 // Society → Contacts: numbers residents see on their Contacts tab. Add / delete (admin RLS).
 import { useState } from 'react';
-import { Contact, Plus, Trash2 } from 'lucide-react';
+import { CircleMinus, Contact, Plus } from 'lucide-react';
 import { Button, EmptyState, Field, IconButton } from '../../../components/ui';
 import { errorMessage } from '../../../data/db';
 import { addContact, deleteContact, listenContacts } from '../../../data/admin';
@@ -25,6 +25,7 @@ export default function ContactsPanel() {
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(null);
+  const [editing, setEditing] = useState(false);
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -76,29 +77,46 @@ export default function ContactsPanel() {
       {contacts.data && list.length === 0 && (
         <div className="card"><EmptyState icon={Contact} title={t('admin.noContacts')} text={t('admin.noContactsText')} /></div>
       )}
-      {KINDS.map(kind => {
+      {KINDS.filter(kind => list.some(c => c.kind === kind)).map((kind, index) => {
         const items = list.filter(c => c.kind === kind);
-        if (!items.length) return null;
         return (
           <section key={kind} aria-labelledby={`contacts-${kind}`}>
-            <h2 id={`contacts-${kind}`} className="section-title">{t(`admin.contactKind_${kind}`)}</h2>
+            <div className="admin-section-head">
+              <h2 id={`contacts-${kind}`} className="section-title">{t(`admin.contactKind_${kind}`)}</h2>
+              {index === 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="admin-btn-44 admin-section-head__action"
+                  aria-pressed={editing}
+                  aria-label={editing ? t('common.done') : t('admin.editContacts')}
+                  onClick={() => setEditing(e => !e)}
+                >
+                  {editing ? t('common.done') : t('common.edit')}
+                </Button>
+              )}
+            </div>
             <div className="card settings-group">
               {items.map(c => (
                 <div key={c.id} className="settings-row admin-contact">
+                  {editing && (
+                    <IconButton
+                      label={t('admin.deleteContactName', { name: c.name })}
+                      className="admin-icon-danger admin-contact__delete"
+                      onClick={() => remove(c)}
+                      disabled={deleting === c.id}
+                    >
+                      <CircleMinus size={22} aria-hidden="true" />
+                    </IconButton>
+                  )}
                   <div className="grow admin-contact__body">
-                    <p className="semibold">{c.name}</p>
-                    <p className="text-sm muted">{[c.role_label, c.available].filter(Boolean).join(' · ')}</p>
-                    <p className="text-sm mono">{c.phone}</p>
+                    <p className="admin-contact__name">{c.name}</p>
+                    {(c.role_label || c.available) && (
+                      <p className="admin-contact__meta">{[c.role_label, c.available].filter(Boolean).join(' · ')}</p>
+                    )}
+                    <p className="admin-contact__phone">{c.phone}</p>
                   </div>
-                  <CallLink phone={c.phone} name={c.name} compact />
-                  <IconButton
-                    label={t('admin.deleteContactName', { name: c.name })}
-                    className="admin-icon-danger"
-                    onClick={() => remove(c)}
-                    disabled={deleting === c.id}
-                  >
-                    <Trash2 size={20} aria-hidden="true" />
-                  </IconButton>
+                  {!editing && <CallLink phone={c.phone} name={c.name} compact />}
                 </div>
               ))}
             </div>

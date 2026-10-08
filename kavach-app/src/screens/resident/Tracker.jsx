@@ -16,7 +16,7 @@ import { useConfirm } from '../../context/DialogContext';
 import { useToast } from '../../context/ToastContext';
 import { useT } from '../../i18n';
 import { clock, minutesBetween, timeAgo } from '../../utils/time';
-import { incidentPlace, teamFor } from './parts/format';
+import { incidentPlace, teamFor, visibleEvents } from './parts/format';
 import { useLive, useNow } from './parts/hooks';
 import CallLink from './parts/CallLink';
 import SafetyTips from './parts/SafetyTips';
@@ -32,19 +32,6 @@ const STEPS = [
   ['stepArrived', 'on_scene_at'],
   ['stepResolved', 'resolved_at'],
 ];
-
-function statusSentence(inc, t) {
-  const name = inc.assigned_name || t('resident.someone');
-  switch (inc.status) {
-    case 'pending': return t(`resident.sentencePending_${teamFor(inc.type)}`);
-    case 'acknowledged': return t('resident.sentenceAccepted', { name });
-    case 'en_route': return t('resident.sentenceEnRoute', { name });
-    case 'on_scene': return t('resident.sentenceOnScene');
-    case 'resolved': return t('resident.sentenceResolved', { n: Math.max(1, minutesBetween(inc.created_at, inc.resolved_at) ?? 1) });
-    case 'cancelled': return t('resident.sentenceCancelled');
-    default: return '';
-  }
-}
 
 export default function Tracker() {
   const { id } = useParams();
@@ -175,54 +162,54 @@ function TrackerView({ id }) {
           </AlertBanner>
         )}
 
-        {/* Status */}
-        <section className="card res-status" style={{ '--tone': status.tone }} aria-live="polite">
+        {/* Status + who is helping */}
+        <section className="card settings-group res-status" style={{ '--tone': status.tone }} aria-live="polite">
           <div className="res-status__top">
             <TypeIcon type={incident.type} size="lg" />
             <div className="grow">
               <p className="res-status__type">{t(`common.type_${incident.type}`)}</p>
               <h2 className="res-status__label">{t(`common.status_${incident.status}`)}</h2>
-            </div>
-          </div>
-          <p className="res-status__sentence">{statusSentence(incident, t)}</p>
-          <p className="res-status__meta">
-            {incident.status === 'pending' && <span className="res-dot pulse" aria-hidden="true" />}
-            {t('resident.sentAt', { time: clock(incident.created_at, lang), ago: timeAgo(incident.created_at, now, t) })}
-          </p>
-        </section>
-
-        {/* Who is helping */}
-        {incident.assigned_name ? (
-          <Card className="res-person">
-            <Avatar name={incident.assigned_name} />
-            <div className="grow">
-              <p className="semibold">{incident.assigned_name}</p>
-              <p className="text-sm muted">
-                {t(`resident.team_${team}`)}
-                {incident.assigned_at ? ` · ${t('resident.acceptedAt', { time: clock(incident.assigned_at, lang) })}` : ''}
+              <p className="res-status__meta">
+                {incident.status === 'pending' && <span className="res-dot pulse" aria-hidden="true" />}
+                {incident.status === 'resolved'
+                  ? `${t('resident.sentAtShort', { time: clock(incident.created_at, lang) })} · ${t('resident.sentenceResolved', { n: Math.max(1, minutesBetween(incident.created_at, incident.resolved_at) ?? 1) })}`
+                  : t('resident.sentAt', { time: clock(incident.created_at, lang), ago: timeAgo(incident.created_at, now, t) })}
               </p>
             </div>
-            {active && (
-              <CallLink
-                phone={incident.assigned_phone}
-                label={t('common.call')}
-                ariaLabel={t('resident.callNamed', { name: incident.assigned_name })}
-                variant="success"
-              />
-            )}
-          </Card>
-        ) : active && (
-          <Card className="stack-sm">
-            <div className="res-person">
-              <span className="type-icon" style={{ '--tone': 'var(--orange)' }} aria-hidden="true"><Clock size={22} /></span>
+          </div>
+
+          {incident.assigned_name ? (
+            <div className="settings-row res-person">
+              <Avatar name={incident.assigned_name} />
               <div className="grow">
-                <p className="semibold">{t('resident.waitingTitle')}</p>
-                <p className="text-sm muted">{t('resident.waitingText')}</p>
+                <p>{incident.assigned_name}</p>
+                <p className="res-person__sub">{t(`resident.team_${team}`)}</p>
               </div>
+              {active && (
+                <CallLink
+                  phone={incident.assigned_phone}
+                  label={t('common.call')}
+                  ariaLabel={t('resident.callNamed', { name: incident.assigned_name })}
+                  variant="success"
+                />
+              )}
             </div>
-            <CallLink phone={securityPhone} label={t('resident.callSecurity')} variant="secondary" block />
-          </Card>
-        )}
+          ) : active && (
+            <div className="settings-row res-person">
+              <span className="res-person__wait" aria-hidden="true"><Clock size={22} /></span>
+              <div className="grow">
+                <p>{t('resident.waitingTitle')}</p>
+                <p className="res-person__sub">{t(`resident.sentencePending_${team}`)}</p>
+              </div>
+              <CallLink
+                phone={securityPhone}
+                label={t('common.call')}
+                ariaLabel={t('resident.callSecurity')}
+                variant="secondary"
+              />
+            </div>
+          )}
+        </section>
 
         {active && ackCount > 0 && (
           <AlertBanner tone="var(--pink)" icon={HeartPulse} role="status">
@@ -311,7 +298,8 @@ function TrackerView({ id }) {
           )}
         </section>
 
-        {/* Timeline */}
+        {/* Timeline: notes and changes the progress steps don't already show */}
+        {(events.loading || (events.error && !events.data) || visibleEvents(events.data, !cancelled).length > 0) && (
         <section aria-labelledby="res-updates-title">
           <h2 id="res-updates-title" className="section-title">{t('resident.updatesTitle')}</h2>
           {events.loading ? (
@@ -322,9 +310,10 @@ function TrackerView({ id }) {
               <Button variant="ghost" size="sm" className="res-btn-44" onClick={events.retry}>{t('common.retry')}</Button>
             </AlertBanner>
           ) : (
-            <Timeline events={events.data} />
+            <Timeline events={events.data} hideSteps={!cancelled} />
           )}
         </section>
+        )}
 
         {canCancel && (
           <Button variant="ghost" block className="res-destructive" loading={cancelling} onClick={doCancel}>

@@ -1,7 +1,7 @@
 // Society → Assets: lifts, DG, pumps grouped by zone; tap to change state with a note.
 import { useState } from 'react';
 import { ChevronRight, Cog } from 'lucide-react';
-import { Badge, Button, EmptyState, Field } from '../../../components/ui';
+import { Button, EmptyState, Field } from '../../../components/ui';
 import { ASSET_STATES } from '../../../config/society';
 import { errorMessage, listenAssets, listenZones, setAssetStatus } from '../../../data/db';
 import { useToast } from '../../../context/ToastContext';
@@ -57,7 +57,7 @@ function AssetSheet({ asset, onClose }) {
               <label key={s} className="settings-row admin-check" htmlFor={`asset-${asset.id}-${s}`}>
                 <span className="admin-state-dot" style={{ '--tone': ASSET_STATES[s].tone }} aria-hidden="true" />
                 <span className="grow">
-                  <span className="semibold">{t(`admin.asset_${s}`)}</span>
+                  <span>{t(`admin.asset_${s}`)}</span>
                   <span className="admin-check__hint">{t(`admin.assetHint_${s}`)}</span>
                 </span>
                 <input
@@ -132,14 +132,19 @@ export default function AssetsPanel() {
                 <button key={a.id} type="button" className="settings-row admin-asset" onClick={() => setEditing(a)}>
                   <IconTile icon={kind.icon} tone={kind.tone} />
                   <span className="grow admin-asset__body">
-                    <span className="semibold">{a.name}</span>
+                    <span className="admin-asset__name">{a.name}</span>
                     <span className="admin-asset__meta">
-                      {[t(`admin.assetKind_${a.kind}`), a.vendor].filter(Boolean).join(' · ')}
-                      {a.state_changed_at && ` · ${t('admin.changedAgo', { when: timeAgo(a.state_changed_at, now, t) })}`}
+                      <span
+                        className={a.state === 'ok' ? undefined : 'admin-asset__state'}
+                        style={a.state === 'ok' ? undefined : { '--tone': ASSET_STATES[a.state]?.tone }}
+                      >
+                        {t(`admin.asset_${a.state}`)}
+                      </span>
+                      {a.vendor && ` · ${a.vendor}`}
+                      {a.state !== 'ok' && a.state_changed_at && ` · ${t('admin.changedAgo', { when: timeAgo(a.state_changed_at, now, t) })}`}
                     </span>
                     {a.notes && a.state !== 'ok' && <span className="admin-asset__note">{a.notes}</span>}
                   </span>
-                  <Badge tone={ASSET_STATES[a.state]?.tone}>{t(`admin.asset_${a.state}`)}</Badge>
                   <ChevronRight size={18} className="admin-chevron" aria-hidden="true" />
                 </button>
               );

@@ -33,16 +33,18 @@ export default function Reports() {
     );
   } else if (!list.length) {
     body = (
-      <EmptyState
-        icon={ClipboardList}
-        title={tab === 'active' ? t('resident.noActiveTitle') : t('resident.noReportsTitle')}
-        text={tab === 'active' ? t('resident.noActiveText') : t('resident.noReportsText')}
-        action={<Button variant="danger" onClick={() => navigate('/resident/report')}>{t('resident.reportEmergency')}</Button>}
-      />
+      <div className="card">
+        <EmptyState
+          icon={ClipboardList}
+          title={tab === 'active' ? t('resident.noActiveTitle') : t('resident.noReportsTitle')}
+          text={tab === 'active' ? t('resident.noActiveText') : t('resident.noReportsText')}
+          action={<Button variant="secondary" className="res-btn-44" onClick={() => navigate('/resident/report')}>{t('resident.reportEmergency')}</Button>}
+        />
+      </div>
     );
   } else {
     body = (
-      <div className="list">
+      <div className="card settings-group">
         {list.map(inc => <IncidentRow key={inc.id} incident={inc} now={now} />)}
       </div>
     );

@@ -17,39 +17,72 @@
 .rsp-badges { display: flex; flex-wrap: wrap; gap: var(--s-1); margin-top: var(--s-2); }
 .rsp-badges--tight { margin-top: var(--s-1); }
 
-/* ── Alerts header: duty switch + mute ────────────── */
-.rsp-header-actions { display: flex; align-items: center; gap: var(--s-1); flex-shrink: 0; }
-.rsp-duty { display: flex; align-items: center; gap: var(--s-2); }
-.rsp-duty__label { font-size: var(--fs-footnote); font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+/* ── Page widths ──────────────────────────────────── */
+/* Lists read best at a phone-ish measure; don't stretch them across a desktop */
+@media (min-width: 768px) {
+  .page.rsp-narrow:has(> .bottom-nav) > :not(.bottom-nav) { max-width: 720px; }
+}
+
+/* ── Status dot + text, flags ─────────────────────── */
+.rsp-status { display: inline-flex; align-items: center; gap: 6px; }
+.rsp-status__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tone, var(--gray)); flex-shrink: 0; }
+.rsp-flags { display: flex; flex-wrap: wrap; column-gap: var(--s-2); margin-top: 2px; font-size: var(--fs-footnote); font-weight: 600; }
+.rsp-flag--red { color: var(--red); }
+.rsp-flag--purple { color: var(--purple); }
+
+/* ── Alerts: duty row ─────────────────────────────── */
+.rsp-duty { min-height: 64px; }
+.rsp-duty__title { display: block; font-size: var(--fs-body); }
+.rsp-duty__detail { display: block; font-size: var(--fs-footnote); color: var(--text-muted); margin-top: 1px; }
 /* Grow the 31 px switch to a 45 px tap target without changing its look */
 .rsp-duty .switch::before { content: ""; position: absolute; inset: -7px -4px; }
 
-/* ── Alert cards ──────────────────────────────────── */
-.rsp-cards { display: grid; gap: var(--s-2); }
-@media (min-width: 1024px) {
-  .rsp-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+/* ── Alerts: summary used by my jobs and open rows ── */
+.rsp-alert__link {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  text-align: left;
 }
-.rsp-card { display: flex; flex-direction: column; }
-.rsp-card__head { display: flex; align-items: flex-start; gap: var(--s-3); }
-.rsp-card__title { font-size: var(--fs-body); font-weight: 600; line-height: 1.25; }
-.rsp-card__place { font-size: var(--fs-subhead); margin-top: 2px; overflow-wrap: anywhere; }
-.rsp-card__meta { font-size: var(--fs-footnote); color: var(--text-muted); margin-top: 2px; }
-.rsp-card__desc {
-  margin-top: var(--s-2);
+.rsp-alert__link > .type-icon { margin-top: 2px; }
+.rsp-alert__link > .rsp-chevron { align-self: center; }
+.rsp-alert__title { display: block; font-size: var(--fs-body); font-weight: 600; line-height: 1.25; }
+.rsp-alert__place { display: block; font-size: var(--fs-subhead); margin-top: 2px; overflow-wrap: anywhere; }
+.rsp-alert__meta { display: block; font-size: var(--fs-footnote); color: var(--text-muted); margin-top: 2px; }
+.rsp-alert__desc {
+  display: -webkit-box;
+  margin-top: var(--s-1);
   font-size: var(--fs-subhead);
   color: var(--text-muted);
-  display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   overflow-wrap: anywhere;
 }
-.rsp-card__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-3); }
-.rsp-card__actions > .btn { flex: 1 1 0; }
-.rsp-card__actions > .rsp-card__primary { flex: 1 1 100%; }
-@media (min-width: 560px) {
-  .rsp-card__actions > .rsp-card__primary { flex: 1 1 auto; }
-  .rsp-card__actions > .btn:not(.rsp-card__primary) { flex: 0 0 auto; }
+
+/* Open alerts: list row with a trailing capsule Claim (App Store "Get" style) */
+.rsp-alert { align-items: flex-start; padding-top: 12px; padding-bottom: 12px; }
+.rsp-alert { flex-wrap: wrap; row-gap: var(--s-2); }
+.rsp-alert > .rsp-alert__link { flex: 1 1 100%; }
+.rsp-alert__claim { flex-shrink: 0; min-height: 44px; min-width: 88px; border-radius: 999px; margin-left: calc(44px + var(--s-3)); }
+/* Phones: Claim sits under the text so long place names and Tamil labels keep their width */
+@media (min-width: 520px) {
+  .rsp-alert { flex-wrap: nowrap; }
+  .rsp-alert > .rsp-alert__link { flex: 1 1 0; }
+  .rsp-alert__claim { align-self: center; margin-left: 0; }
+}
+
+/* My jobs: one card each, next step + call under the summary */
+.rsp-jobs { display: grid; gap: var(--s-2); }
+.rsp-job > .rsp-alert__link { width: 100%; padding: 12px var(--s-3); }
+button.rsp-alert__link:hover { background: var(--fill); }
+.rsp-job__actions { display: flex; gap: var(--s-2); padding: 0 var(--s-3) var(--s-3) calc(var(--s-3) + 44px + var(--s-3)); }
+.rsp-job__call { flex-shrink: 0; }
+@media (max-width: 420px) {
+  .rsp-job__actions { padding-left: var(--s-3); }
 }
 
 /* ── Dialogs (forms and pick lists) ───────────────── */
@@ -67,19 +100,23 @@
 .rsp-dialog > .dialog__actions { margin-top: var(--s-3); }
 .rsp-pick-list .settings-row { min-height: 64px; }
 .rsp-pick-list .settings-row:disabled { opacity: 0.6; }
+.rsp-on-duty { color: var(--green); }
+.rsp-check-mark { color: var(--primary); flex-shrink: 0; }
 .rsp-segmented-grid .segmented { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .rsp-segmented-grid .segmented__item { padding: 0 var(--s-2); min-height: 44px; }
 
 /* ── Incident detail ──────────────────────────────── */
-.rsp-hero { display: flex; align-items: flex-start; gap: var(--s-3); }
-.rsp-hero__title { font-size: var(--fs-title2); font-weight: 700; line-height: 1.2; }
-.rsp-hero__place { font-size: var(--fs-subhead); color: var(--text-muted); margin-top: 2px; overflow-wrap: anywhere; }
-.rsp-hero__age { font-size: var(--fs-footnote); color: var(--text-muted); margin-top: var(--s-2); }
-.rsp-actions { display: flex; flex-direction: column; gap: var(--s-2); }
-@media (min-width: 768px) {
-  .rsp-actions { flex-direction: row; }
-  .rsp-actions > .btn { flex: 1; }
+.rsp-detail-grid { display: flex; flex-direction: column; gap: var(--s-3); }
+.rsp-detail-side > .section-title:first-child { margin-top: var(--s-3); }
+@media (min-width: 1100px) {
+  .rsp-detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); gap: var(--s-4); align-items: start; }
+  .rsp-detail-side { position: sticky; top: var(--s-4); }
+  .rsp-detail-side > .section-title:first-child { margin-top: 0; }
 }
+.rsp-hero { min-height: 64px; padding-top: 12px; padding-bottom: 12px; }
+.rsp-hero__status { font-size: var(--fs-body); font-weight: 600; }
+.rsp-hero__age { font-size: var(--fs-footnote); color: var(--text-muted); margin-top: 2px; }
+.rsp-actions { display: flex; flex-direction: column; gap: var(--s-1); }
 .rsp-info { padding-top: 10px; padding-bottom: 10px; }
 .rsp-info__label { font-size: var(--fs-caption); color: var(--text-muted); }
 .rsp-info__value { font-size: var(--fs-body); overflow-wrap: anywhere; }
@@ -131,7 +168,27 @@
 .rsp-asset, .rsp-history { align-items: flex-start; padding-top: 12px; padding-bottom: 12px; }
 .rsp-asset > .type-icon, .rsp-history > .type-icon { margin-top: 2px; }
 .rsp-asset > .rsp-chevron, .rsp-history > .rsp-chevron { align-self: center; }
-.rsp-asset__changed { font-size: var(--fs-caption); color: var(--text-muted); margin-top: var(--s-1); }
+.rsp-asset__changed { font-size: var(--fs-caption); color: var(--text-muted); margin-top: 2px; }
+.rsp-asset__warn { font-size: var(--fs-footnote); font-weight: 600; color: var(--tone); margin-top: 2px; }
+.rsp-asset__state { font-size: var(--fs-subhead); color: var(--tone, var(--text-muted)); }
+.rsp-asset__state--trail { display: none; align-self: center; max-width: 40%; text-align: right; }
+.rsp-asset__state--inline { display: block; margin-top: 2px; font-size: var(--fs-footnote); }
+/* Room for a trailing value once the row is wide enough */
+@media (min-width: 520px) {
+  .rsp-asset__state--trail { display: block; }
+  .rsp-asset__state--inline { display: none; }
+}
+/* Zone groups: two columns once there is room, like a wide grouped table */
+.rsp-zones { display: flex; flex-direction: column; gap: var(--s-3); }
+@media (min-width: 1200px) {
+  .rsp-zones { display: block; columns: 2; column-gap: var(--s-4); }
+  .rsp-zones > section { break-inside: avoid; padding-bottom: var(--s-3); }
+  .rsp-zones .section-title { margin-top: 0; }
+}
+
+.rsp-summary { min-height: 44px; margin: 0; }
+.rsp-summary > dd { margin: 0; }
+.rsp-summary__value { color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 /* ── Print (incident report) ──────────────────────── */
 .rsp-print-only, .rsp-print-inline { display: none; }
@@ -153,7 +210,7 @@
   }
   body { background: Canvas; }
   .bottom-nav, .toasts, .offline-banner, .dialog-overlay,
-  .rsp-no-print, .page-header .icon-btn { display: none !important; }
+  .rsp-no-print, .page-nav, .page-header .icon-btn { display: none !important; }
   .page, .page:has(> .bottom-nav) {
     padding: 0 !important;
     margin: 0 !important;

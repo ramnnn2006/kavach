@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { CircleAlert, CircleCheck } from 'lucide-react';
-import { AlertBanner, Button, Card, Spinner, TypeIcon } from '../../../components/ui';
+import { AlertBanner, Button, Card, TypeIcon } from '../../../components/ui';
 import { errorMessage, firstResponderAck } from '../../../data/db';
 import { listenMedicalAlerts } from '../../../data/resident';
 import { useToast } from '../../../context/ToastContext';
@@ -31,18 +31,17 @@ export default function MedicalAlerts({ userId, now }) {
     }
   };
 
+  // Quiet when there is nothing to do: the section only appears while someone needs help
+  if (loading || (!error && !data?.length)) return null;
+
   let body;
-  if (loading) {
-    body = <div className="card res-center"><Spinner label={t('common.loading')} /></div>;
-  } else if (error && !data) {
+  if (error && !data) {
     body = (
       <AlertBanner tone="var(--red)" icon={CircleAlert} role="alert">
         <p>{t('resident.medError')}</p>
         <Button variant="ghost" size="sm" className="res-btn-44" onClick={retry}>{t('common.retry')}</Button>
       </AlertBanner>
     );
-  } else if (!data?.length) {
-    body = <Card><p className="text-sm muted">{t('resident.medEmpty')}</p></Card>;
   } else {
     body = (
       <div className="list">

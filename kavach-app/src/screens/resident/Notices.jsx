@@ -1,5 +1,5 @@
 // Society notices from admins — pinned first.
-import { CircleAlert, Megaphone, Pin } from 'lucide-react';
+import { CircleAlert, Megaphone } from 'lucide-react';
 import BottomNav from '../../components/BottomNav';
 import { AlertBanner, Button, EmptyState, PageHeader, Spinner } from '../../components/ui';
 import { errorMessage, listenNotices } from '../../data/db';
@@ -23,32 +23,37 @@ export default function ResidentNotices() {
       </AlertBanner>
     );
   } else if (!data?.length) {
-    body = <EmptyState icon={Megaphone} title={t('resident.noNoticesTitle')} text={t('resident.noNoticesText')} />;
+    body = <div className="card"><EmptyState icon={Megaphone} title={t('resident.noNoticesTitle')} text={t('resident.noNoticesText')} /></div>;
   } else {
-    body = (
-      <div className="list">
-        {data.map(n => (
-          <article key={n.id} className="card res-notice" aria-labelledby={`notice-${n.id}`}>
-            {n.pinned && (
-              <p className="res-notice__pin">
-                <Pin size={14} aria-hidden="true" />
-                {t('resident.pinned')}
+    const pinned = data.filter(n => n.pinned);
+    const rest = data.filter(n => !n.pinned);
+    const group = (items, key, title) => items.length > 0 && (
+      <section key={key} aria-labelledby={`res-notices-${key}`}>
+        <h2 id={`res-notices-${key}`} className="section-title">{title}</h2>
+        <div className="card settings-group">
+          {items.map(n => (
+            <article key={n.id} className="settings-row res-notice" aria-labelledby={`notice-${n.id}`}>
+              <h3 id={`notice-${n.id}`} className="res-notice__title">{n.title}</h3>
+              {n.body && <p className="res-notice__body">{n.body}</p>}
+              <p className="res-notice__meta">
+                {[n.author_name, dateTime(n.created_at, lang)].filter(Boolean).join(' · ')}
               </p>
-            )}
-            <h2 id={`notice-${n.id}`} className="res-notice__title">{n.title}</h2>
-            {n.body && <p className="res-notice__body">{n.body}</p>}
-            <p className="res-notice__meta">
-              {[n.author_name, dateTime(n.created_at, lang)].filter(Boolean).join(' · ')}
-            </p>
-          </article>
-        ))}
+            </article>
+          ))}
+        </div>
+      </section>
+    );
+    body = (
+      <div className="res-notices">
+        {group(pinned, 'pinned', t('resident.pinned'))}
+        {group(rest, 'recent', pinned.length ? t('resident.noticesRecent') : t('resident.noticesAll'))}
       </div>
     );
   }
 
   return (
     <main className="page res-page">
-      <PageHeader title={t('resident.noticesTitle')} subtitle={t('resident.noticesSub')} />
+      <PageHeader title={t('resident.noticesTitle')} />
       {body}
       <BottomNav />
     </main>

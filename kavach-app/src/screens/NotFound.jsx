@@ -24,7 +24,7 @@ export default function NotFound() {
 
   return (
     <main className="page page--center fade-in">
-      <div className="card not-found">
+      <div className="not-found">
         <EmptyState
           icon={MapPinOff}
           title={t('landing.notFoundTitle')}

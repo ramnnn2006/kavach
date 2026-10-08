@@ -1,7 +1,6 @@
 import { useT } from '../../../i18n';
 import { clock } from '../../../utils/time';
-
-const NOTE_ACTIONS = ['resolved', 'status_changed', 'note_added'];
+import { NOTE_ACTIONS, visibleEvents } from './format';
 
 function sentence(ev, t) {
   const actor = ev.actor_name || t('resident.someone');
@@ -38,12 +37,13 @@ function sentence(ev, t) {
 }
 
 // Plain-language history of an incident (incident_events).
-export default function Timeline({ events }) {
+export default function Timeline({ events, hideSteps = false }) {
   const { t, lang } = useT();
-  if (!events?.length) return null;
+  const list = visibleEvents(events, hideSteps);
+  if (!list.length) return null;
   return (
     <ol className="card res-timeline">
-      {events.map(ev => (
+      {list.map(ev => (
         <li key={ev.id} className="res-timeline__item">
           <time className="res-timeline__time" dateTime={ev.created_at}>{clock(ev.created_at, lang)}</time>
           <div className="res-timeline__body">

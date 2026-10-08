@@ -1,7 +1,5 @@
-// Stacked monthly bars by incident type — plain CSS, no chart library.
-// Colours are the type tones; stack order keeps red (fire) and pink (medical) apart for colour-blind readers.
-// Identity is never colour-only: legend with labels, per-bar breakdown on hover/focus, and a table view.
-import { getType } from '../../../config/society';
+// Monthly incident bars — plain CSS, no chart library. One restrained tint; the per-type
+// breakdown is text (hover/focus card, accessible label) and a full table view.
 import { useT } from '../../../i18n';
 import { CHART_TYPE_ORDER, incidentsLabel } from './format';
 
@@ -40,15 +38,6 @@ export default function MonthlyChart({ rows, months = 6, now }) {
 
   return (
     <div className="admin-chart">
-      <div className="admin-chart__legend" aria-label={t('admin.legend')}>
-        {present.map(type => (
-          <span key={type} className="admin-chart__key">
-            <span className="admin-chart__swatch" style={{ '--tone': getType(type).tone }} aria-hidden="true" />
-            {t(`common.typeShort_${type}`)}
-          </span>
-        ))}
-      </div>
-
       <div className="admin-chart__plot" role="list" aria-label={t('admin.monthlyChartLabel', { n: months })}>
         {data.map(d => {
           const breakdown = present.filter(type => d.counts[type]).map(type => `${t(`common.typeShort_${type}`)} ${d.counts[type]}`);
@@ -58,13 +47,7 @@ export default function MonthlyChart({ rows, months = 6, now }) {
               <div className="admin-chart__area" aria-hidden="true">
                 <div className="admin-chart__bar" style={{ height: `${(d.total / max) * 100}%` }}>
                   {d.total > 0 && <span className="admin-chart__total">{d.total}</span>}
-                  {[...present].reverse().filter(type => d.counts[type]).map(type => (
-                    <span
-                      key={type}
-                      className="admin-chart__seg"
-                      style={{ flexGrow: d.counts[type], '--tone': getType(type).tone }}
-                    />
-                  ))}
+                  {d.total > 0 && <span className="admin-chart__seg" />}
                 </div>
               </div>
               <span className="admin-chart__label" aria-hidden="true">{d.label}</span>
@@ -73,7 +56,6 @@ export default function MonthlyChart({ rows, months = 6, now }) {
                   <p className="semibold">{d.long}</p>
                   {present.filter(type => d.counts[type]).map(type => (
                     <p key={type} className="admin-chart__tip-row">
-                      <span className="admin-chart__swatch" style={{ '--tone': getType(type).tone }} />
                       <span className="grow">{t(`common.typeShort_${type}`)}</span>
                       <span className="mono">{d.counts[type]}</span>
                     </p>

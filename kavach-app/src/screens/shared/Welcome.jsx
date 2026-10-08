@@ -57,9 +57,11 @@ export default function Welcome() {
       <div className="stack-lg" style={{ width: '100%', maxWidth: 420, margin: '0 auto' }}>
         <div className="stack-sm center" style={{ alignItems: 'center' }}>
           <Logo size={56} />
-          <h1 className="page-header__title">{t('auth.welcomeTitle')}</h1>
+          <div>
+            {profile?.society?.name && <p className="page-header__eyebrow">{profile.society.name}</p>}
+            <h1 className="page-header__title">{t('auth.welcomeTitle')}</h1>
+          </div>
           <p className="muted">{t('auth.welcomeText')}</p>
-          {profile?.society?.name && <p className="semibold">{profile.society.name}</p>}
         </div>
 
         {!profile?.society_id ? (

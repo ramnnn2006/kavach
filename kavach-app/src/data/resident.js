@@ -1,7 +1,7 @@
 // Resident-only queries that db.js does not cover. RLS still decides what is visible.
 import { supabase } from '../lib/supabase';
 import { live } from './live';
-import { DbError, listContacts, listQueue, getMySafetyResponse, listFirstResponderAcks } from './db';
+import { DbError, listContacts, getMySafetyResponse, listFirstResponderAcks } from './db';
 
 async function run(promise) {
   const { data, error } = await promise;
@@ -37,25 +37,29 @@ export function listenFirstResponderAcks(incidentId, cb, onError) {
   );
 }
 
+const MEDICAL_POLL_MS = 15000;
+
 /**
- * Active medical incidents a community first responder can see (not my own),
- * each with `ackCount` and `iAmComing`.
+ * Active medical incidents a community first responder can act on (not my own), each with
+ * `ackCount` and `iAmComing`. Served by an RPC that returns only place, time, people and the
+ * reporter's description — never their name, phone or health details.
  */
-export async function listMedicalAlerts(myId) {
-  const rows = (await listQueue({ active: true }))
-    .filter(i => i.type === 'medical' && i.reporter_id !== myId);
-  if (!rows.length) return [];
-  const acks = await run(supabase.from('first_responder_acks')
-    .select('incident_id, profile_id')
-    .in('incident_id', rows.map(r => r.id)));
-  return rows
-    .map(r => {
-      const mine = acks.filter(a => a.incident_id === r.id);
-      return { ...r, ackCount: mine.length, iAmComing: mine.some(a => a.profile_id === myId) };
-    })
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+export async function listMedicalAlerts() {
+  const rows = await run(supabase.rpc('list_medical_alerts'));
+  return (rows || []).map(r => ({ ...r, type: 'medical', ackCount: r.ack_count, iAmComing: r.i_am_coming }));
 }
 
-export function listenMedicalAlerts(myId, cb, onError) {
-  return live(['incidents', 'incident_events'], () => listMedicalAlerts(myId), cb, onError);
+export function listenMedicalAlerts(_myId, cb, onError) {
+  // First responders can't subscribe to medical rows (RLS keeps reporter details private),
+  // so refresh on a timer as well as on focus / reconnect. New alerts also arrive by push.
+  let closed = false;
+  const stop = live([], listMedicalAlerts, cb, onError);
+  const timer = setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    listMedicalAlerts().then(
+      (rows) => { if (!closed) cb(rows); },
+      (err) => { if (!closed) (onError || console.error)(err); },
+    );
+  }, MEDICAL_POLL_MS);
+  return () => { closed = true; clearInterval(timer); stop(); };
 }

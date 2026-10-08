@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Users } from 'lucide-react';
-import { Avatar, Badge, EmptyState, Spinner } from '../../../components/ui';
+import { Avatar, EmptyState, Spinner } from '../../../components/ui';
 import { assignIncident, errorMessage, listenTeam } from '../../../data/db';
 import { useToast } from '../../../context/ToastContext';
 import { useT } from '../../../i18n';
@@ -80,16 +80,19 @@ export default function AssignSheet({ incident, onClose }) {
                   <span className="admin-pick__name">{m.full_name}</span>
                   <span className="admin-pick__meta">
                     <DutyDot on={m.on_duty} />
-                    <span>{t('admin.activeLoad', { n: m.active_load || 0 })}</span>
+                    {` · ${t('admin.activeLoad', { n: m.active_load || 0 })}`}
                   </span>
                   <span className="admin-pick__meta">
-                    {matches && <Badge tone="var(--green)">{t('admin.handlesType', { type: t(`common.typeShort_${incident.type}`) })}</Badge>}
-                    <SpecialtyChips specialties={m.specialties} highlight={incident.type} />
+                    {matches && <span className="admin-text-green">{t('admin.handlesType', { type: t(`common.typeShort_${incident.type}`) })} · </span>}
+                    <SpecialtyChips specialties={m.specialties} />
                   </span>
                 </span>
                 {busyId === m.id && <Spinner label={t('common.loading')} />}
                 {current && (
-                  <Badge tone="var(--blue)"><Check size={14} aria-hidden="true" />{t('admin.assigned')}</Badge>
+                  <span className="admin-pick__current">
+                    <Check size={20} aria-hidden="true" />
+                    <span className="sr-only">{t('admin.assigned')}</span>
+                  </span>
                 )}
               </button>
             );

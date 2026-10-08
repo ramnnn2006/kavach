@@ -1,11 +1,10 @@
 // "What's happening?" — one plain-language row per emergency type.
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Phone } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import BottomNav from '../../components/BottomNav';
-import { AlertBanner, PageHeader, TypeIcon } from '../../components/ui';
+import { PageHeader, TypeIcon } from '../../components/ui';
 import { TYPE_ORDER } from '../../config/society';
 import { useT } from '../../i18n';
-import CallLink from './parts/CallLink';
 import '../../styles/resident.css';
 
 export default function ReportType() {
@@ -16,7 +15,7 @@ export default function ReportType() {
     <main className="page res-page">
       <PageHeader back="/resident" title={t('resident.whatsHappening')} subtitle={t('resident.whatsHappeningSub')} />
 
-      <div className="stack">
+      <div>
         <nav aria-label={t('resident.whatsHappening')} className="card settings-group">
           {TYPE_ORDER.map(type => (
             <button
@@ -35,12 +34,10 @@ export default function ReportType() {
           ))}
         </nav>
 
-        <AlertBanner tone="var(--red)" icon={Phone}>
-          <p>{t('resident.lifeDanger')}</p>
-          <div className="res-banner-actions">
-            <CallLink phone="112" label={t('resident.call112')} variant="danger" />
-          </div>
-        </AlertBanner>
+        <p className="res-footer">
+          {t('resident.lifeDanger')}{' '}
+          <a href="tel:112" className="res-inline-link">{t('resident.call112')}</a>
+        </p>
       </div>
 
       <BottomNav />

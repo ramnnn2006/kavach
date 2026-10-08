@@ -29,6 +29,7 @@ export default {
     seeAll: "See all",
     sentAgo: "Alert sent · {ago}",
     sentAt: "Sent at {time} · {ago}",
+    sentAtShort: "Sent at {time}",
     sentencePending_maintenance: "We've alerted the maintenance team",
     sentencePending_security: "We've alerted the security team",
     sentenceAccepted: "{name} accepted your alert",
@@ -192,6 +193,8 @@ export default {
     noticesTitle: "Notices",
     noticesSub: "From your society office",
     pinned: "Pinned",
+    noticesRecent: "Recent",
+    noticesAll: "All notices",
     noNoticesTitle: "No notices",
     noNoticesText: "Announcements about power cuts, lift work and drills will appear here.",
 
@@ -230,6 +233,7 @@ export default {
     seeAll: "எல்லாம் பார்",
     sentAgo: "அனுப்பியது · {ago}",
     sentAt: "{time}-க்கு அனுப்பியது · {ago}",
+    sentAtShort: "{time}-க்கு அனுப்பியது",
     sentencePending_maintenance: "பராமரிப்புக் குழுவுக்குத் தகவல் அனுப்பிவிட்டோம்",
     sentencePending_security: "செக்யூரிட்டி குழுவுக்குத் தகவல் அனுப்பிவிட்டோம்",
     sentenceAccepted: "{name} உங்கள் புகாரை ஏற்றுக்கொண்டார்",
@@ -393,6 +397,8 @@ export default {
     noticesTitle: "அறிவிப்புகள்",
     noticesSub: "உங்கள் சொசைட்டி அலுவலகத்திலிருந்து",
     pinned: "முக்கியமானது",
+    noticesRecent: "சமீபத்தியவை",
+    noticesAll: "எல்லா அறிவிப்புகளும்",
     noNoticesTitle: "அறிவிப்புகள் இல்லை",
     noNoticesText: "மின்வெட்டு, லிஃப்ட் வேலை, தீ ஒத்திகை பற்றிய அறிவிப்புகள் இங்கே வரும்.",
 

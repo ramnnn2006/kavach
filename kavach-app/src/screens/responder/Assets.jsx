@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronRight, Cog, TriangleAlert, CircleCheck } from 'lucide-react';
+import { ChevronRight, Cog, TriangleAlert } from 'lucide-react';
 import BottomNav from '../../components/BottomNav';
-import { AlertBanner, Badge, Card, EmptyState, PageHeader, Spinner, TypeIcon } from '../../components/ui';
+import { AlertBanner, Card, EmptyState, PageHeader, Spinner, TypeIcon } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { ASSET_STATES } from '../../config/society';
 import { assetSpecialty, covers, listenAssetsDetailed } from '../../data/responder';
@@ -78,16 +78,18 @@ export default function Assets() {
           </Card>
         )}
 
-        {mine.length > 0 && (attention > 0
-          ? <AlertBanner tone="var(--orange)" icon={TriangleAlert}>{t('responder.needAttention', { n: attention })}</AlertBanner>
-          : <AlertBanner tone="var(--green)" icon={CircleCheck}>{t('responder.allWorking')}</AlertBanner>)}
+        {attention > 0 && (
+          <AlertBanner tone="var(--orange)" icon={TriangleAlert}>{t('responder.needAttention', { n: attention })}</AlertBanner>
+        )}
 
+        <div className="rsp-zones">
         {groups.map(group => (
           <section key={group.key} aria-labelledby={`rsp-zone-${group.key}`}>
             <h2 id={`rsp-zone-${group.key}`} className="section-title">{group.name || t('responder.otherZone')}</h2>
             <Card className="settings-group">
               {group.items.map(asset => {
-                const stateTone = ASSET_STATES[asset.state]?.tone || 'var(--gray)';
+                // Working is the normal case: plain grey value. Only problems get a colour.
+                const stateTone = asset.state === 'ok' ? 'var(--text-muted)' : (ASSET_STATES[asset.state]?.tone || 'var(--text-muted)');
                 const stateText = t(`responder.assetState_${asset.state}`);
                 const warnings = expiryBadges(asset, t, lang, now);
                 return (
@@ -104,10 +106,10 @@ export default function Assets() {
                       <span className="list-row__meta rsp-block">
                         {[t(`responder.assetKind_${asset.kind}`), asset.vendor].filter(Boolean).join(' · ')}
                       </span>
-                      <span className="rsp-badges rsp-badges--tight">
-                        <Badge tone={stateTone}>{stateText}</Badge>
-                        {warnings.map(w => <Badge key={w.key} tone={w.tone}>{w.text}</Badge>)}
-                      </span>
+                      <span className="rsp-asset__state rsp-asset__state--inline" style={{ '--tone': stateTone }}>{stateText}</span>
+                      {warnings.map(w => (
+                        <span key={w.key} className="rsp-asset__warn rsp-block" style={{ '--tone': w.tone }}>{w.text}</span>
+                      ))}
                       {asset.notes && <span className="list-row__meta rsp-block rsp-clamp">{asset.notes}</span>}
                       {asset.state_changed_at && (
                         <span className="rsp-asset__changed rsp-block">
@@ -117,6 +119,7 @@ export default function Assets() {
                         </span>
                       )}
                     </span>
+                    <span className="rsp-asset__state rsp-asset__state--trail" style={{ '--tone': stateTone }}>{stateText}</span>
                     <ChevronRight size={18} className="rsp-chevron" aria-hidden="true" />
                   </button>
                 );
@@ -124,6 +127,7 @@ export default function Assets() {
             </Card>
           </section>
         ))}
+        </div>
       </div>
 
       {editing && <AssetDialog asset={editing} now={now} onClose={() => setEditingId(null)} />}

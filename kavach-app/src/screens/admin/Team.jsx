@@ -1,8 +1,8 @@
 // Admin Team — staff with duty, specialties and load; residents who can be made staff.
 import { useState } from 'react';
-import { Search, UserPlus, Users } from 'lucide-react';
+import { Search, Users } from 'lucide-react';
 import BottomNav from '../../components/BottomNav';
-import { Avatar, Badge, Button, EmptyState, PageHeader } from '../../components/ui';
+import { Avatar, Button, EmptyState, PageHeader } from '../../components/ui';
 import { listenMembers, listenTeam } from '../../data/db';
 import { useAuth } from '../../context/AuthContext';
 import { useT } from '../../i18n';
@@ -35,7 +35,7 @@ export default function Team() {
     || (m.flat?.zone?.name || '').toLowerCase().includes(q));
 
   return (
-    <main className="page admin-page">
+    <main className="page admin-page admin-narrow">
       <PageHeader
         title={t('common.nav_team')}
         subtitle={team.data ? t('admin.teamSubtitle', { onDuty: onDutyCount, staff: staff.length }) : undefined}
@@ -63,17 +63,17 @@ export default function Team() {
                 <span className="admin-member__body">
                   <span className="admin-member__name">
                     {m.full_name}
-                    {m.id === user?.id && <span className="muted text-sm"> {t('admin.you')}</span>}
+                    {m.id === user?.id && <span className="admin-member__you"> {t('admin.you')}</span>}
                   </span>
                   <span className="admin-member__meta">
-                    <Badge tone={m.role === 'admin' ? 'var(--indigo)' : 'var(--blue)'}>{t(`common.role_${m.role}`)}</Badge>
-                    <DutyDot on={m.on_duty} />
-                    <span>{t('admin.activeLoad', { n: m.active_load || 0 })}</span>
+                    {t(`common.role_${m.role}`)}
+                    {m.specialties?.length > 0 && <> · <SpecialtyChips specialties={m.specialties} /></>}
                   </span>
-                  {m.specialties?.length > 0 && <SpecialtyChips specialties={m.specialties} />}
-                  {m.last_resolved_at && (
-                    <span className="admin-member__meta">{t('admin.lastResolved', { when: timeAgo(m.last_resolved_at, now, t) })}</span>
-                  )}
+                  <span className="admin-member__meta">
+                    <DutyDot on={m.on_duty} />
+                    {` · ${t('admin.activeLoad', { n: m.active_load || 0 })}`}
+                    {m.last_resolved_at && ` · ${t('admin.lastResolved', { when: timeAgo(m.last_resolved_at, now, t) })}`}
+                  </span>
                 </span>
               </button>
               <CallLink phone={m.phone} name={m.full_name} compact />
@@ -119,25 +119,22 @@ export default function Team() {
                     <span className="admin-member__body">
                       <span className="admin-member__name">{m.full_name || t('admin.unnamed')}</span>
                       <span className="admin-member__meta">{memberFlat(m) || t('admin.noFlat')}</span>
-                      {(flags.length > 0 || m.first_responder_skill) && (
-                        <span className="admin-chips">
-                          {m.first_responder_skill && (
-                            <Badge tone="var(--green)">{t(`admin.skill_${m.first_responder_skill}`)}</Badge>
-                          )}
-                          {flags.map(f => <Badge key={f} tone="var(--purple)">{f}</Badge>)}
+                      {m.first_responder_skill && (
+                        <span className="admin-member__meta">
+                          {t('admin.firstResponderSkill', { skill: t(`admin.skill_${m.first_responder_skill}`) })}
                         </span>
                       )}
+                      {flags.length > 0 && <span className="admin-member__flags">{flags.join(' · ')}</span>}
                     </span>
                   </div>
                   <Button
-                    variant="secondary"
+                    variant="ghost"
                     size="sm"
-                    className="admin-btn-44"
+                    className="admin-btn-44 admin-row-action"
                     onClick={() => setEditing({ member: m, initialRole: 'responder' })}
                     aria-label={t('admin.makeStaffName', { name: m.full_name })}
                   >
-                    <UserPlus size={16} aria-hidden="true" />
-                    <span className="admin-hide-xs">{t('admin.makeStaff')}</span>
+                    {t('admin.makeStaff')}
                   </Button>
                 </div>
               );

@@ -67,6 +67,8 @@ export function AuthProvider({ children }) {
       const changedUser = uid !== currentUserId.current;
       currentUserId.current = uid;
       setSession(s);
+      // Covers sign-outs that don't go through signOut() (expired session, another tab)
+      if (event === 'SIGNED_OUT') clearOutbox().catch(() => { /* nothing queued */ });
       if (changedUser) {
         // Defer DB work out of the auth callback (supabase-js recommendation)
         setTimeout(() => {

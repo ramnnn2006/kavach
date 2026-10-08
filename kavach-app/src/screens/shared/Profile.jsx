@@ -1,28 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Building2, PersonStanding, Accessibility, Activity, Baby, Stethoscope, BadgeCheck, Tags,
-  Bell, Moon, ALargeSmall, LogOut,
-} from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import BottomNav from '../../components/BottomNav';
-import { PageHeader, Card, Avatar, Badge, Button, Field, Switch, Segmented, Spinner } from '../../components/ui';
+import { PageHeader, Card, Avatar, Button, Switch, Segmented, Spinner } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/DialogContext';
 import { useT, LANGUAGES } from '../../i18n';
 import { updateMyProfile, setOnDuty, errorMessage } from '../../data/db';
 import { isPushSupported, getPushState, enablePush, disablePush } from '../../lib/push';
-import { APP_VERSION, getType } from '../../config/society';
+import { listOutbox } from '../../data/outbox';
+import { APP_VERSION } from '../../config/society';
 import '../../styles/profile.css';
 
-const ROLE_TONE = { resident: 'var(--blue)', responder: 'var(--orange)', admin: 'var(--indigo)' };
 const PHONE_RE = /^(\+91[\s-]?)?[6-9]\d{9}$/;
 const NOTE_MAX = 120;
+const NOTE_WARN = 20; // show the characters-left count only near the limit
 const VULN_FLAGS = [
-  { key: 'elderly', icon: PersonStanding, tone: 'var(--teal)', labelKey: 'profile.vulnElderly' },
-  { key: 'mobility', icon: Accessibility, tone: 'var(--blue)', labelKey: 'profile.vulnMobility' },
-  { key: 'medical_device', icon: Activity, tone: 'var(--pink)', labelKey: 'profile.vulnMedicalDevice' },
-  { key: 'infant', icon: Baby, tone: 'var(--purple)', labelKey: 'profile.vulnInfant' },
+  { key: 'elderly', labelKey: 'profile.vulnElderly' },
+  { key: 'mobility', labelKey: 'profile.vulnMobility' },
+  { key: 'medical_device', labelKey: 'profile.vulnMedicalDevice' },
+  { key: 'infant', labelKey: 'profile.vulnInfant' },
 ];
 const SKILLS = [
   { value: '', labelKey: 'profile.frNone' },
@@ -36,14 +34,6 @@ const IS_IOS = typeof navigator !== 'undefined'
 
 const normPhone = (p) => (p || '').replace(/[\s-]/g, '');
 
-function Tile({ icon: Icon, tone }) {
-  return (
-    <span className="type-icon type-icon--sm" style={{ '--tone': tone }} aria-hidden="true">
-      <Icon size={18} />
-    </span>
-  );
-}
-
 function Section({ id, title, footnote, children }) {
   return (
     <section className="profile-section" aria-labelledby={id}>
@@ -54,10 +44,9 @@ function Section({ id, title, footnote, children }) {
   );
 }
 
-function SwitchRow({ icon, tone, label, hint, checked, onChange, disabled }) {
+function SwitchRow({ label, hint, checked, onChange, disabled }) {
   return (
     <div className="settings-row">
-      <Tile icon={icon} tone={tone} />
       <div className="profile-row__body">
         <p className="profile-row__label">{label}</p>
         {hint && <p className="profile-row__hint">{hint}</p>}
@@ -128,23 +117,33 @@ function PersonalForm({ profile, onSaved }) {
   };
 
   return (
-    <Card as="form" className="profile-form" onSubmit={save} noValidate>
-      <Field label={t('common.name')} htmlFor="pf-name" error={errors.name}>
-        <input id="pf-name" name="name" className={`input ${errors.name ? 'input--error' : ''}`} autoComplete="name"
-          maxLength={80} value={form.name} onChange={onChange} aria-invalid={!!errors.name} />
-      </Field>
-      <Field label={t('common.phone')} htmlFor="pf-phone" error={errors.phone} hint={t('profile.phoneHint')}>
-        <input id="pf-phone" name="phone" type="tel" inputMode="tel" className={`input ${errors.phone ? 'input--error' : ''}`}
-          autoComplete="tel" value={form.phone} onChange={onChange} aria-invalid={!!errors.phone} />
-      </Field>
-      <div>
-        <p className="profile-readonly__label">{t('common.email')}</p>
-        <p className="profile-readonly__value">{profile.email || t('profile.noEmail')}</p>
+    <Card as="form" className="settings-group" onSubmit={save} noValidate>
+      <div className="settings-row profile-field">
+        <label className="profile-field__label" htmlFor="pf-name">{t('common.name')}</label>
+        <div className="profile-field__control">
+          <input id="pf-name" name="name" className="profile-field__input" autoComplete="name"
+            maxLength={80} value={form.name} onChange={onChange} aria-invalid={!!errors.name}
+            aria-describedby={errors.name ? 'pf-name-error' : undefined} />
+          {errors.name && <p id="pf-name-error" className="profile-field__error" role="alert">{errors.name}</p>}
+        </div>
+      </div>
+      <div className="settings-row profile-field">
+        <label className="profile-field__label" htmlFor="pf-phone">{t('common.phone')}</label>
+        <div className="profile-field__control">
+          <input id="pf-phone" name="phone" type="tel" inputMode="tel" className="profile-field__input"
+            autoComplete="tel" value={form.phone} onChange={onChange} aria-invalid={!!errors.phone}
+            aria-describedby={errors.phone ? 'pf-phone-error' : undefined} />
+          {errors.phone && <p id="pf-phone-error" className="profile-field__error" role="alert">{errors.phone}</p>}
+        </div>
+      </div>
+      <div className="settings-row profile-field">
+        <span className="profile-field__label">{t('common.email')}</span>
+        <span className="profile-field__value">{profile.email || t('profile.noEmail')}</span>
       </div>
       {dirty && (
-        <div className="profile-actions">
-          <Button type="button" variant="secondary" onClick={reset} disabled={busy}>{t('common.cancel')}</Button>
-          <Button type="submit" loading={busy}>{t('profile.saveChanges')}</Button>
+        <div className="profile-group__actions">
+          <Button type="button" variant="ghost" size="sm" className="profile-btn-44" onClick={reset} disabled={busy}>{t('common.cancel')}</Button>
+          <Button type="submit" size="sm" className="profile-btn-44" loading={busy}>{t('profile.saveChanges')}</Button>
         </div>
       )}
     </Card>
@@ -191,26 +190,26 @@ function SafetyForm({ value, onSaved }) {
       {VULN_FLAGS.map(f => (
         <SwitchRow
           key={f.key}
-          icon={f.icon}
-          tone={f.tone}
           label={t(f.labelKey)}
           checked={form[f.key]}
           onChange={(on) => setForm(s => ({ ...s, [f.key]: on }))}
           disabled={busy}
         />
       ))}
-      <div className="profile-group__field">
-        <Field label={t('profile.vulnNote')} htmlFor="pf-note" hint={t('profile.vulnNoteHint')}>
-          <input id="pf-note" className="input" maxLength={NOTE_MAX} value={form.note}
-            placeholder={t('profile.vulnNotePlaceholder')} aria-describedby="pf-note-count"
-            onChange={(e) => setForm(s => ({ ...s, note: e.target.value.slice(0, NOTE_MAX) }))} disabled={busy} />
-        </Field>
-        <p id="pf-note-count" className="profile-count">{t('profile.charCount', { n: form.note.length })}</p>
+      <div className="settings-row profile-note">
+        <label className="profile-note__label" htmlFor="pf-note">{t('profile.vulnNote')}</label>
+        <input id="pf-note" className="profile-field__input profile-note__input" maxLength={NOTE_MAX} value={form.note}
+          placeholder={t('profile.vulnNotePlaceholder')}
+          aria-describedby={NOTE_MAX - form.note.length <= NOTE_WARN ? 'pf-note-count' : undefined}
+          onChange={(e) => setForm(s => ({ ...s, note: e.target.value.slice(0, NOTE_MAX) }))} disabled={busy} />
+        {NOTE_MAX - form.note.length <= NOTE_WARN && (
+          <p id="pf-note-count" className="profile-count">{t('profile.charCount', { n: form.note.length })}</p>
+        )}
       </div>
       {dirty && (
         <div className="profile-group__actions">
-          <Button variant="secondary" onClick={() => setForm(initial)} disabled={busy}>{t('common.cancel')}</Button>
-          <Button onClick={save} loading={busy}>{t('profile.saveSafety')}</Button>
+          <Button variant="ghost" size="sm" className="profile-btn-44" onClick={() => setForm(initial)} disabled={busy}>{t('common.cancel')}</Button>
+          <Button size="sm" className="profile-btn-44" onClick={save} loading={busy}>{t('profile.saveSafety')}</Button>
         </div>
       )}
     </Card>
@@ -241,15 +240,13 @@ function FirstResponderRow({ skill, onSaved }) {
   };
 
   return (
-    <Card className="profile-form">
-      <Field label={t('profile.frLabel')} htmlFor="pf-skill">
-        <div className="profile-select-wrap">
-          <span className="profile-select-wrap__icon"><Stethoscope size={18} aria-hidden="true" /></span>
-          <select id="pf-skill" className="select" value={value} onChange={change} disabled={busy} aria-busy={busy || undefined}>
-            {SKILLS.map(s => <option key={s.value || 'none'} value={s.value}>{t(s.labelKey)}</option>)}
-          </select>
-        </div>
-      </Field>
+    <Card className="settings-group">
+      <div className="settings-row profile-field">
+        <label className="profile-field__label profile-field__label--grow" htmlFor="pf-skill">{t('profile.frLabel')}</label>
+        <select id="pf-skill" className="profile-popup" value={value} onChange={change} disabled={busy} aria-busy={busy || undefined}>
+          {SKILLS.map(s => <option key={s.value || 'none'} value={s.value}>{t(s.labelKey)}</option>)}
+        </select>
+      </div>
     </Card>
   );
 }
@@ -279,8 +276,6 @@ function DutyGroup({ profile, onSaved }) {
     <Section id="pf-duty" title={t('profile.sectionDuty')} footnote={isAdmin ? undefined : t('profile.specialtiesHint')}>
       <Card className="settings-group">
         <SwitchRow
-          icon={BadgeCheck}
-          tone="var(--green)"
           label={t('profile.onDuty')}
           hint={t(onDuty ? 'profile.onDutyHintOn' : 'profile.onDutyHintOff')}
           checked={onDuty}
@@ -288,25 +283,14 @@ function DutyGroup({ profile, onSaved }) {
           disabled={busy}
         />
         <div className="settings-row">
-          <Tile icon={Tags} tone="var(--orange)" />
           <div className="profile-row__body">
             <p className="profile-row__label">{t('profile.specialties')}</p>
-            {specialties.length > 0 && (
-              <div className="profile-chips">
-                {specialties.map(type => {
-                  const { icon: Icon, tone } = getType(type);
-                  return (
-                    <Badge key={type} tone={tone}>
-                      <Icon size={14} aria-hidden="true" />
-                      {t(`common.typeShort_${type}`)}
-                    </Badge>
-                  );
-                })}
-              </div>
-            )}
             {isAdmin && <p className="profile-row__hint">{t('profile.specialtiesAdmin')}</p>}
             {!isAdmin && specialties.length === 0 && <p className="profile-row__hint">{t('profile.specialtiesNone')}</p>}
           </div>
+          {specialties.length > 0 && (
+            <span className="profile-row__value">{specialties.map(type => t(`common.typeShort_${type}`)).join(', ')}</span>
+          )}
         </div>
       </Card>
     </Section>
@@ -329,8 +313,6 @@ function NotificationsGroup({ push, busy, onToggle }) {
     <Section id="pf-push" title={t('profile.sectionNotifications')} footnote={footnote}>
       <Card className="settings-group">
         <SwitchRow
-          icon={Bell}
-          tone="var(--red)"
           label={t('profile.pushLabel')}
           hint={hint}
           checked={push === 'enabled'}
@@ -390,13 +372,16 @@ export default function Profile() {
   };
 
   const logOut = async () => {
-    const ok = await confirm(t('common.logOutConfirmTitle'), t('common.logOutConfirmText'), {
+    const queued = (await listOutbox().catch(() => [])).length;
+    const text = queued ? t('common.logOutConfirmQueued', { n: queued }) : t('common.logOutConfirmText');
+    const ok = await confirm(t('common.logOutConfirmTitle'), text, {
       confirmLabel: t('common.logOut'),
       destructive: true,
     });
     if (!ok) return;
     // Stop this device getting the previous user's alerts (needs the session, so before sign-out)
-    if (push === 'enabled') {
+    // Any existing subscription, even if the toggle hasn't finished loading
+    if (pushSupported) {
       try { await disablePush(); } catch (err) { console.error('Could not remove push subscription:', err); }
     }
     await signOut();
@@ -437,25 +422,25 @@ export default function Profile() {
           <Avatar name={profile.full_name} large />
           <div className="profile-hero__text">
             <p className="profile-hero__name">{profile.full_name}</p>
-            <div className="profile-hero__meta">
-              <Badge tone={ROLE_TONE[role]}>{t(`common.role_${role}`)}</Badge>
-              {society?.name && (
-                <span className="profile-hero__sub">{[society.name, society.city].filter(Boolean).join(', ')}</span>
-              )}
-            </div>
-            {isResident && homeLine && <p className="profile-hero__sub">{homeLine}</p>}
+            <p className="profile-hero__sub">
+              {[t(`common.role_${role}`), [society?.name, society?.city].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
+            </p>
           </div>
         </Card>
 
-        <Section id="pf-personal" title={t('profile.sectionPersonal')}>
+        <Section id="pf-personal" title={t('profile.sectionPersonal')} footnote={t('profile.phoneHint')}>
           <PersonalForm key={`${profile.full_name}|${profile.phone}`} profile={profile} onSaved={refreshProfile} />
         </Section>
 
         {isResident && (
           <Section id="pf-home" title={t('common.home')}>
             <Card className="settings-group">
-              <div className="settings-row">
-                <Tile icon={Building2} tone="var(--blue)" />
+              <button
+                type="button"
+                className="settings-row profile-link-row"
+                onClick={() => navigate('/welcome')}
+                aria-label={flat ? `${homeLine} · ${t('profile.homeChange')}` : t('profile.homeAdd')}
+              >
                 <div className="profile-row__body">
                   {flat ? (
                     <>
@@ -466,10 +451,8 @@ export default function Profile() {
                     <p className="profile-row__label">{t('profile.homeNone')}</p>
                   )}
                 </div>
-                <Button variant="secondary" size="sm" className="profile-row__action" onClick={() => navigate('/welcome')}>
-                  {flat ? t('profile.homeChange') : t('profile.homeAdd')}
-                </Button>
-              </div>
+                <ChevronRight size={18} className="profile-chevron" aria-hidden="true" />
+              </button>
             </Card>
           </Section>
         )}
@@ -501,15 +484,14 @@ export default function Profile() {
 
         <Section id="pf-display" title={t('common.display')}>
           <Card className="settings-group">
-            <SwitchRow icon={Moon} tone="var(--indigo)" label={t('common.darkMode')} checked={dark} onChange={setDark} />
-            <SwitchRow icon={ALargeSmall} tone="var(--blue)" label={t('common.largerText')} checked={largeText} onChange={setLargeText} />
+            <SwitchRow label={t('common.darkMode')} checked={dark} onChange={setDark} />
+            <SwitchRow label={t('common.largerText')} checked={largeText} onChange={setLargeText} />
           </Card>
         </Section>
 
         <Section id="pf-account" title={t('common.account')}>
           <Card className="settings-group">
             <button type="button" className="settings-row profile-logout" onClick={logOut}>
-              <LogOut size={20} aria-hidden="true" />
               {t('common.logOut')}
             </button>
           </Card>

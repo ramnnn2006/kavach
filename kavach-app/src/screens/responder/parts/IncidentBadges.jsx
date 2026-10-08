@@ -1,7 +1,7 @@
 import { Badge } from '../../../components/ui';
 import { getStatus } from '../../../config/society';
 import { useT } from '../../../i18n';
-import { urgencyTone, vulnerabilityShort } from './format';
+import { vulnerabilityShort } from './format';
 
 // Status pill with staff wording ("Open", "Claimed", "En route"…)
 export function StaffStatusBadge({ status }) {
@@ -9,15 +9,27 @@ export function StaffStatusBadge({ status }) {
   return <Badge tone={getStatus(status).tone}>{t(`common.staffStatus_${status}`)}</Badge>;
 }
 
-// Urgency, vulnerable reporter and escalation — always text, never colour alone
-export function IncidentBadges({ inc }) {
+// Status as a dot + text, for headers and rows where a pill would be noise
+export function StatusText({ status, children }) {
+  const { t } = useT();
+  return (
+    <span className="rsp-status" style={{ '--tone': getStatus(status).tone }}>
+      <span className="rsp-status__dot" aria-hidden="true" />
+      {children ?? t(`common.staffStatus_${status}`)}
+    </span>
+  );
+}
+
+// Vulnerable reporter and escalation as one line of plain tinted text (never colour alone: the words carry it)
+export function IncidentFlags({ inc }) {
   const { t } = useT();
   const vuln = inc.vulnerable ? (vulnerabilityShort(inc.reporter_vulnerability, t) || t('responder.vulnerableBadge')) : '';
+  const escalated = inc.escalation_level > 1;
+  if (!vuln && !escalated) return null;
   return (
-    <div className="rsp-badges">
-      <Badge tone={urgencyTone(inc.urgency_score)}>{t('responder.urgency', { n: inc.urgency_score })}</Badge>
-      {vuln && <Badge tone="var(--purple)">{vuln}</Badge>}
-      {inc.escalation_level > 1 && <Badge tone="var(--red)">{t('responder.escalated', { n: inc.escalation_level })}</Badge>}
-    </div>
+    <span className="rsp-flags">
+      {escalated && <span className="rsp-flag rsp-flag--red">{t('responder.escalated', { n: inc.escalation_level })}</span>}
+      {vuln && <span className="rsp-flag rsp-flag--purple">{vuln}</span>}
+    </span>
   );
 }

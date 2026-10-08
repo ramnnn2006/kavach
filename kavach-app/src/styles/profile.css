@@ -18,42 +18,72 @@ main.page:has(> .bottom-nav) > .profile { max-width: 680px; }
 
 /* Header card */
 .profile-hero { display: flex; align-items: center; gap: var(--s-3); }
-.profile-hero__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--s-1); }
+.profile-hero__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .profile-hero__name {
-  font-size: var(--fs-title2);
-  font-weight: 700;
-  line-height: 1.2;
+  font-size: var(--fs-title3);
+  font-weight: 600;
+  line-height: 1.25;
   overflow-wrap: anywhere;
 }
-.profile-hero__meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-2); }
 .profile-hero__sub { font-size: var(--fs-subhead); color: var(--text-muted); }
 
 /* Rows inside a .settings-group */
 .profile-row__body { flex: 1; min-width: 0; }
 .profile-row__label { font-size: var(--fs-body); }
 .profile-row__hint { margin-top: 2px; font-size: var(--fs-footnote); color: var(--text-muted); }
-.profile-row__action { min-height: 44px; flex-shrink: 0; }
+.profile-row__value { flex-shrink: 0; max-width: 55%; text-align: right; color: var(--text-muted); overflow-wrap: anywhere; }
+.profile-chevron { color: var(--text-tertiary); flex-shrink: 0; }
+.profile-link-row { color: inherit; }
+.profile-btn-44 { min-height: 44px; }
 
-/* Inputs sit on a white card, so give them a fill */
-.profile-form .input,
-.profile-form .textarea,
-.profile-form .select,
-.profile-group__field .input { background: var(--fill); }
+/* Label + value rows (iOS "Edit contact" style) */
+.profile-field { align-items: center; }
+.profile-field__label { flex: 0 0 auto; min-width: 6.5em; max-width: 45%; font-size: var(--fs-body); overflow-wrap: anywhere; }
+.profile-field__label--grow { flex: 1; min-width: 0; max-width: none; }
+.profile-field__control { flex: 1; min-width: 0; }
+.profile-field__input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: var(--fs-body);
+  color: var(--text);
+}
+.profile-field__input:focus { outline: none; }
+.profile-field:focus-within { background: var(--fill); }
+.profile-field__input::placeholder { color: var(--text-tertiary); }
+.profile-field__input[aria-invalid="true"] { color: var(--danger); }
+.profile-field__error { font-size: var(--fs-footnote); color: var(--danger); padding-bottom: var(--s-1); }
+.profile-field__value { flex: 1; min-width: 0; color: var(--text-muted); overflow-wrap: anywhere; }
 
-.profile-form { display: flex; flex-direction: column; gap: var(--s-3); }
-.profile-readonly__label { font-size: var(--fs-sm); font-weight: 600; }
-.profile-readonly__value { margin-top: 6px; color: var(--text-muted); overflow-wrap: anywhere; }
+/* Free-text note: small label above a borderless input */
+.profile-note { flex-direction: column; align-items: stretch; gap: 2px; padding-top: 10px; padding-bottom: 6px; }
+.profile-note__label { font-size: var(--fs-footnote); color: var(--text-muted); }
 
-.profile-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); }
-.profile-group__field,
+/* Pop-up button (iOS menu picker look) */
+.profile-popup {
+  flex-shrink: 0;
+  max-width: 60%;
+  min-height: 44px;
+  padding: 0 var(--s-1);
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font-size: var(--fs-body);
+  text-align: right;
+  text-align-last: right;
+  cursor: pointer;
+}
+.profile-popup:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: var(--r-sm); }
+
 .profile-group__actions {
   display: flex;
-  flex-direction: column;
+  justify-content: flex-end;
   gap: var(--s-2);
-  padding: var(--s-2) var(--s-3) var(--s-3);
+  padding: var(--s-2) var(--s-3);
   border-top: 0.5px solid var(--border);
 }
-.profile-group__actions { flex-direction: row; justify-content: flex-end; padding-top: var(--s-3); }
 .profile-count {
   font-size: var(--fs-caption);
   color: var(--text-muted);
@@ -61,24 +91,9 @@ main.page:has(> .bottom-nav) > .profile { max-width: 680px; }
   font-variant-numeric: tabular-nums;
 }
 
-.profile-select-wrap { position: relative; }
-.profile-select-wrap > .select { padding-left: 44px; }
-.profile-select-wrap__icon {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  color: var(--pink);
-  pointer-events: none;
-}
-
-.profile-chips { display: flex; flex-wrap: wrap; gap: var(--s-1); margin-top: 6px; }
-
 button.settings-row.profile-logout {
   justify-content: center;
   color: var(--danger);
-  font-weight: 600;
 }
 
 .profile-version {

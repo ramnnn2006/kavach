@@ -34,7 +34,13 @@ const DEFAULT_TITLE = 'Kavach';
 
 // Only same-origin app paths may be opened from a notification.
 function safePath(url) {
-  return typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') ? url : '/';
+  if (typeof url !== 'string') return '/';
+  try {
+    const u = new URL(url, self.location.origin);
+    return u.origin === self.location.origin ? u.pathname + u.search : '/';
+  } catch {
+    return '/';
+  }
 }
 
 function readPayload(event) {

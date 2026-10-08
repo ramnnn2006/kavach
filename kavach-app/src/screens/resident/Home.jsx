@@ -1,19 +1,19 @@
 // Resident Home — calm, fast emergency start: Safety Check prompt, live reports,
-// one big "Report an emergency" action and a one-tap lift shortcut.
+// one "Report an emergency" action and a one-tap lift shortcut.
 import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, CircleAlert, ShieldCheck, Siren } from 'lucide-react';
 import BottomNav from '../../components/BottomNav';
-import { AlertBanner, Button, Card, PageHeader, TypeIcon } from '../../components/ui';
+import { AlertBanner, Button, PageHeader, TypeIcon } from '../../components/ui';
 import { listenMyIncidents, listenSociety } from '../../data/db';
 import { startOutboxSync } from '../../data/outbox';
-import { getStatus, isActive } from '../../config/society';
+import { isActive } from '../../config/society';
 import { useAuth } from '../../context/AuthContext';
 import { useT } from '../../i18n';
 import { timeAgo } from '../../utils/time';
 import { firstName, homeLine, teamFor } from './parts/format';
 import { useLive, useNow } from './parts/hooks';
-import CallLink from './parts/CallLink';
+import CallRow from './parts/CallRow';
 import IncidentRow from './parts/IncidentRow';
 import MedicalAlerts from './parts/MedicalAlerts';
 import OutboxNotice from './parts/OutboxNotice';
@@ -31,32 +31,25 @@ function activeSentence(inc, t) {
   }
 }
 
+// An open report as a row: what, the latest news in plain words, when it was sent.
 function ActiveReport({ incident, now }) {
   const { t } = useT();
   const navigate = useNavigate();
-  const status = getStatus(incident.status);
   return (
-    <Card
-      as="button"
-      type="button"
-      interactive
-      className="res-active"
-      style={{ '--tone': status.tone }}
-      onClick={() => navigate(`/resident/sos/${incident.id}`)}
-    >
+    <button type="button" className="settings-row res-row res-row--active" onClick={() => navigate(`/resident/sos/${incident.id}`)}>
       <TypeIcon type={incident.type} />
-      <div className="res-row__body">
-        <p className="res-row__title">
-          {t(`common.type_${incident.type}`)} · <span className="res-active__status">{t(`common.status_${incident.status}`)}</span>
-        </p>
-        <p className="res-row__detail">{activeSentence(incident, t)}</p>
-        <p className="res-row__meta">
+      <span className="res-row__body">
+        <span className="res-row__head">
+          <span className="res-row__title">{t(`common.type_${incident.type}`)}</span>
+          <span className="res-row__time">{timeAgo(incident.created_at, now, t)}</span>
+        </span>
+        <span className="res-row__detail">
           {incident.status === 'pending' && <span className="res-dot pulse" aria-hidden="true" />}
-          {t('resident.sentAgo', { ago: timeAgo(incident.created_at, now, t) })}
-        </p>
-      </div>
-      <ChevronRight size={20} className="res-chevron" aria-hidden="true" />
-    </Card>
+          {activeSentence(incident, t)}
+        </span>
+      </span>
+      <ChevronRight size={18} className="res-chevron" aria-hidden="true" />
+    </button>
   );
 }
 
@@ -98,61 +91,60 @@ export default function Home() {
         )}
 
         {active.length > 0 && (
-          <section aria-labelledby="res-active-title" className="stack-sm">
-            <h2 id="res-active-title" className="sr-only">{t('resident.activeTitle')}</h2>
-            {active.map(inc => <ActiveReport key={inc.id} incident={inc} now={now} />)}
+          <section aria-labelledby="res-active-title">
+            <h2 id="res-active-title" className="section-title">{t('resident.activeTitle')}</h2>
+            <div className="card settings-group">
+              {active.map(inc => <ActiveReport key={inc.id} incident={inc} now={now} />)}
+            </div>
           </section>
         )}
 
         <div className="stack-sm">
           <button type="button" className="res-hero" onClick={() => navigate('/resident/report')}>
-            <span className="res-hero__icon" aria-hidden="true"><Siren size={28} /></span>
+            <Siren size={26} className="res-hero__icon" aria-hidden="true" />
             <span className="res-hero__text">
               <span className="res-hero__title">{t('resident.reportEmergency')}</span>
               <span className="res-hero__sub">{t('resident.reportEmergencySub')}</span>
             </span>
-            <ChevronRight size={24} className="res-hero__chev" aria-hidden="true" />
           </button>
 
-          <button type="button" className="res-lift" onClick={() => navigate('/resident/report/lift')}>
-            <TypeIcon type="lift" />
-            <span className="res-lift__text">
-              <span className="res-lift__title">{t('resident.stuckInLift')}</span>
-              <span className="res-lift__sub">{t('resident.stuckInLiftSub')}</span>
-            </span>
-            <ChevronRight size={20} className="res-chevron" aria-hidden="true" />
-          </button>
+          <div className="card settings-group">
+            <button type="button" className="settings-row res-lift" onClick={() => navigate('/resident/report/lift')}>
+              <TypeIcon type="lift" size="sm" />
+              <span className="res-lift__text">
+                <span className="res-lift__title">{t('resident.stuckInLift')}</span>
+                <span className="res-lift__sub">{t('resident.stuckInLiftSub')}</span>
+              </span>
+              <ChevronRight size={18} className="res-chevron" aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         <section aria-labelledby="res-call-title">
           <h2 id="res-call-title" className="section-title">{t('resident.quickCall')}</h2>
           <div className="card settings-group">
-            {securityPhone && (
-              <div className="settings-row">
+            <CallRow
+              phone={securityPhone}
+              title={t('resident.securityDesk')}
+              detail={securityPhone}
+              ariaLabel={t('resident.callNamed', { name: t('resident.securityDesk') })}
+              icon={(
                 <span className="type-icon type-icon--sm" style={{ '--tone': 'var(--blue)' }} aria-hidden="true">
                   <ShieldCheck size={18} />
                 </span>
-                <div className="grow">
-                  <p className="semibold">{t('resident.securityDesk')}</p>
-                  <p className="text-sm muted">{securityPhone}</p>
-                </div>
-                <CallLink
-                  phone={securityPhone}
-                  label={t('common.call')}
-                  ariaLabel={t('resident.callNamed', { name: t('resident.securityDesk') })}
-                />
-              </div>
-            )}
-            <div className="settings-row">
-              <span className="type-icon type-icon--sm" style={{ '--tone': 'var(--red)' }} aria-hidden="true">
-                <Siren size={18} />
-              </span>
-              <div className="grow">
-                <p className="semibold">{t('common.emergency112')}</p>
-                <p className="text-sm muted">{t('resident.contact112')}</p>
-              </div>
-              <CallLink phone="112" label={t('common.call')} ariaLabel={t('resident.call112')} />
-            </div>
+              )}
+            />
+            <CallRow
+              phone="112"
+              title={t('common.emergency112')}
+              detail={t('resident.contact112')}
+              ariaLabel={t('resident.call112')}
+              icon={(
+                <span className="type-icon type-icon--sm" style={{ '--tone': 'var(--red)' }} aria-hidden="true">
+                  <Siren size={18} />
+                </span>
+              )}
+            />
           </div>
         </section>
 
@@ -166,7 +158,7 @@ export default function Home() {
               <h2 id="res-recent-title" className="section-title">{t('resident.recentTitle')}</h2>
               <Link className="res-link res-section-head__link" to="/resident/reports">{t('resident.seeAll')}</Link>
             </div>
-            <div className="list">
+            <div className="card settings-group">
               {recent.map(inc => <IncidentRow key={inc.id} incident={inc} now={now} />)}
             </div>
           </section>

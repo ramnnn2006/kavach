@@ -53,9 +53,28 @@ export function errorMessage(err, t) {
     wrong_specialty: 'responder.errWrongSpecialty',
   };
   if (map[code]) return t(map[code]);
-  if (code === 'invalid' && err.message && err.message !== 'invalid') return err.message;
+  if (err?.name === 'PushError' && PUSH_REASONS.includes(err.reason)) return t(`common.pushErr_${err.reason}`);
+  if (code === 'invalid') return t(INVALID_DETAILS[err.message] || 'common.errorInvalid');
   return t('common.errorGeneric');
 }
+
+// Server `detail` texts (English) → translated keys. Anything else shows a generic message,
+// so raw database text never reaches the screen.
+const INVALID_DETAILS = {
+  'Incident is already closed': 'common.errClosed',
+  'Status can only move forward': 'common.errStale',
+  'Use cancel_incident to cancel': 'common.errStale',
+  'Location (zone) is required': 'common.errLocation',
+  'Zone not in society': 'common.errLocation',
+  'Choose a tower in your society': 'common.errLocation',
+  'You cannot remove your own admin role': 'common.errOwnAdmin',
+  'This safety check has ended': 'common.errCheckEnded',
+  'That flat number belongs to another tower': 'common.errFlatTower',
+  'Enter a valid flat number': 'common.errFlatNumber',
+  'Message is required (max 300 characters)': 'common.errMessage',
+  'Only active medical incidents': 'common.errMedicalOnly',
+};
+const PUSH_REASONS = ['dismissed', 'no_service_worker', 'subscribe_failed', 'save_failed'];
 
 async function myId() {
   const { data } = await supabase.auth.getSession();

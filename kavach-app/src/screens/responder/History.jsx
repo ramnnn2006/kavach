@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, History as HistoryIcon } from 'lucide-react';
 import BottomNav from '../../components/BottomNav';
-import { Badge, Button, Card, EmptyState, PageHeader, Spinner, Stat, TypeIcon } from '../../components/ui';
+import { Button, Card, EmptyState, PageHeader, Spinner, TypeIcon } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { listenMyHandled } from '../../data/responder';
 import { useT } from '../../i18n';
@@ -47,7 +47,7 @@ export default function History() {
   }, [rows, now]);
 
   return (
-    <main className="page">
+    <main className="page rsp-narrow">
       <PageHeader eyebrow={specialtySummary(profile, t)} title={t('responder.historyTitle')} />
 
       <div className="stack">
@@ -57,12 +57,19 @@ export default function History() {
 
         {rows === null && !error && <div className="rsp-center"><Spinner large label={t('common.loading')} /></div>}
 
-        {rows !== null && (
-          <div className="grid-3">
-            <Stat value={stats.week} label={t('responder.statResolvedWeek')} tone="var(--green)" />
-            <Stat value={stats.avg ?? '–'} label={t('responder.statAvgResolve')} />
-            <Stat value={stats.total} label={t('responder.statTotal')} />
-          </div>
+        {rows !== null && rows.length > 0 && (
+          <Card className="settings-group" as="dl">
+            {[
+              [t('responder.statResolvedWeek'), stats.week],
+              [t('responder.statAvgResolve'), formatDuration(stats.avg, t)],
+              [t('responder.statTotal'), stats.total],
+            ].map(([label, value]) => (
+              <div key={label} className="settings-row rsp-summary">
+                <dt className="grow">{label}</dt>
+                <dd className="rsp-summary__value">{value}</dd>
+              </div>
+            ))}
+          </Card>
         )}
 
         {rows !== null && rows.length === 0 && (
@@ -77,6 +84,8 @@ export default function History() {
         )}
 
         {rows !== null && rows.length > 0 && (
+          <section aria-labelledby="rsp-history-jobs">
+          <h2 id="rsp-history-jobs" className="section-title">{t('responder.historyJobs')}</h2>
           <Card className="settings-group">
             {rows.map(inc => {
               const place = placeLine(inc, t);
@@ -88,10 +97,10 @@ export default function History() {
                   <span className="grow">
                     <span className="list-row__title rsp-block">{t(`common.type_${inc.type}`)}</span>
                     <span className="list-row__meta rsp-block">{[place, when].filter(Boolean).join(' · ')}</span>
-                    <span className="rsp-badges rsp-badges--tight">
+                    <span className="list-row__meta rsp-block">
                       {inc.status === 'resolved'
-                        ? <Badge tone="var(--green)">{t('responder.resolvedIn', { d: formatDuration(mins, t) })}</Badge>
-                        : <Badge>{t(`common.staffStatus_${inc.status}`)}</Badge>}
+                        ? t('responder.resolvedIn', { d: formatDuration(mins, t) })
+                        : t(`common.staffStatus_${inc.status}`)}
                     </span>
                   </span>
                   <ChevronRight size={18} className="rsp-chevron" aria-hidden="true" />
@@ -99,6 +108,7 @@ export default function History() {
               );
             })}
           </Card>
+          </section>
         )}
       </div>
 

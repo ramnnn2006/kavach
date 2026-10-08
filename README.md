@@ -1,114 +1,103 @@
-<div align="center">
-  
-  # 🛡️ KAVACH 
-  
-  **Next-Gen Campus Emergency & Incident Response System**
+# Kavach
 
-</div>
+Emergency response for apartment societies. A resident taps once to report a stuck lift, a fire, a medical emergency, a security problem, a power cut or a water problem. The right guard or technician gets the alert with the tower, floor and flat. Everyone sees who has taken it and how far along it is. Unanswered alerts go up to the committee automatically.
 
----
+Built as an installable web app (PWA) for Android and iPhone, in English and Tamil. The demo society is *Alpha Residency*, Chennai (Towers A–D).
 
-## ⚡ Overview
+## Who uses it
 
-**Kavach** (Hindi for _Shield_) is a centralized real-time emergency management platform designed for large university campuses. It bridges the critical delay between an incident occurring (medical emergencies, elevator hazards, localized fires, power outages) and the campus response team arriving on the scene.
+| Role | What they get |
+| --- | --- |
+| **Resident** | Report an emergency in two taps (one for a stuck lift), live tracker, report history, notices, emergency contacts, Safety Check replies. Can mark vulnerable people at home (elderly, wheelchair, medical device, infant) so responders know before they arrive. Doctors and nurses can opt in as community first responders for medical alerts. |
+| **Responder** | Alerts for their specialties only. Maintenance staff see lift, power and water; security staff see fire, medical and security. Claim an alert, then mark *On the way → Reached → Resolved*. Equipment status, compliance checks due, own history, on-duty switch and an alert sound. |
+| **Admin** (RWA committee, facility manager) | Sees everything. Assign and reassign alerts, team and specialties, power-cut mode (grid / DG with P1–P4 area priority), equipment and compliance tracker, notices, Safety Check roll call, reliability reports, and a full-screen command board for the security cabin. |
 
-With dedicated workspaces for **Students**, **Responders**, and **Admins**, Kavach eliminates the chaos of phone chains and ensures that help gets exactly where it is needed, instantly.
+## Features
 
----
+- **Specialty routing.** Each alert goes to on-duty responders whose specialty matches. The database enforces this, not the app.
+- **One claim wins.** If two people press Claim at the same time, exactly one gets it; the other is told who took it.
+- **Escalation.** Level 2 if unclaimed after 2 minutes (admins notified), level 3 after 5 minutes. A scheduled job runs every 30 seconds.
+- **Urgency score.** Based on hazard, area priority, people affected, waiting time and whether a vulnerable person is involved.
+- **Safety Check.** The committee asks a tower or the whole society "Are you safe?". Residents answer *I'm safe* or *I need help*, and a *need help* reply becomes an alert automatically. Live counts show who hasn't answered.
+- **Power-cut mode.** On DG power, P1 areas (pumps, gate) and P2 (towers) stay on, P3 rotates and P4 is cut. Residents see a notice.
+- **Compliance tracker.** Lift licences, ARD battery tests, DG servicing, fire equipment, with due and overdue dates.
+- **Push notifications.** Web Push for new alerts, status changes, escalations, medical alerts to first responders and Safety Checks, in the user's language.
+- **Works offline.** A report made without signal is queued on the phone and sent when the network returns, without creating duplicates. A *Call security desk* button is always shown.
+- **Audit trail.** Every claim, status change, assignment and cancellation is logged with who did it and when. Admins can print an incident report.
 
-## 🔥 Key Features
+## Tech
 
-### 🌟 Interactive Welcome Experience
-- **Interactive Onboarding Walkthrough**: A swipeable step-by-step tutorial covering key safety features, with paging progress indicators, skipping, and session memory of completion.
-- **Unified Sign In & Account Registration**: Support for both standard Sign In and Sign Up modes, complete with real-time email validation checks.
-- **Contextual Password Strength Meter**: A color-coded strength bar (Weak, Medium, Strong) active exclusively during registration, hidden during simple sign-in.
-- **Glassmorphic 404 Safety Zone**: An elegant "Area Unsecured" 404 handler that automatically routes users back to their active workspace based on their current auth state and role.
+- React 19 + Vite 7, plain CSS following Apple's Human Interface Guidelines (system colours, Dynamic Type sizes, dark mode, larger text), lucide icons.
+- Supabase: Postgres 17 with row-level security on every table. All writes go through `SECURITY DEFINER` functions, and triggers own the server-side fields. Also used: Auth (email + password), Realtime, `pg_cron`, `pg_net`, Vault, and an Edge Function for Web Push.
+- `vite-plugin-pwa` (custom service worker, prompt to update), deployed on Vercel.
 
-### 🎓 For Students
-- **1-Click SOS Grids**: Immediately trigger categorized emergency flows (Medical, Fire, Lift Stuck, Power).
-- **Live Tracking**: Watch in real-time as a responder is assigned to your incident and arrives on the scene.
-- **Micro-Accessibility**: Full support for Dark Mode, High Contrast Mode, and oversized text for panic-state usability.
-- **Silent SOS & Haptics**: Covert reporting options when vocalizing an emergency isn't viable.
-
-### 🚑 For Responders
-- **Smart Alerting**: Instant geofenced notifications for ongoing incidents with auto-calculated Urgency Scores.
-- **One-Tap Acceptance**: Claim incidents instantly to clear the queue and log accurate response times.
-- **Live Action Status**: Update statuses from _En Route_ to _On Scene_ to _Resolved_ with one tap.
-
-### 🛡️ For Campus Admins (Command Center)
-- **Live Command Dashboard**: View the entire campus grid. See localized power outages and active incident hotspots in real time.
-- **Auto-Escalation Protocol**: If an incident goes unacknowledged by a responder for too long, Kavach automatically bumps the incident to Supervisor and Campus Admin priority.
-- **Power Rotation UI**: Instantly initiate "Outage Mode" and visually manage priority power grids (Hostels vs. Academic Blocks) during load shedding.
-
----
-
-## 🛠️ Architecture & Tech Stack
-
-Kavach was built with speed and reliability in mind:
-
-- **Frontend Layer**: React 18, Vite (for lightning-fast HMR and bundling), Vanilla CSS (Handcrafted design system using CSS variables supporting Dark, Light, and High Contrast styling).
-- **Backend & Real-time Layer**: Firebase Firestore (NoSQL Document Store, instantly syncing WebSockets).
-- **Auth Layer**: Firebase Authentication (Role-based access controls and secure session management).
-
----
-
-## 🚀 Setup & Local Sandbox Testing
-
-No database credentials? No problem! If Kavach detects that your Firebase API keys are absent, it automatically boots into **Demo Sandbox Mode** with local fallbacks.
-
-**1. Clone the repository & Navigate**
-
-```bash
-git clone https://github.com/ramnnn2006/kavach.git
-cd kavach/kavach-app
+```
+kavach-app/
+  src/
+    screens/        resident/, responder/, admin/, shared/ (one folder per role)
+    data/           db.js (all queries + RPC wrappers), live.js (realtime), outbox.js (offline queue)
+    i18n/strings/   English + Tamil strings per area
+    styles/         tokens.css, components.css, one stylesheet per role
+    sw.js           service worker (caching + push)
+  supabase/
+    migrations/     schema, RLS, RPCs, cron, realtime, push (apply in order)
+    functions/notify/  Web Push edge function
+    seed.sql        demo society: zones, flats, lifts, DG, pumps, checks, contacts
+  scripts/
+    smoke-test.mjs  28 live permission checks
+    query-check.mjs checks the app's queries against the live schema
+docs/
+  product-spec.md, demo-guide.md, problem-evidence.md
 ```
 
-**2. Install Dependencies**
+## Run it locally
 
 ```bash
+cd kavach-app
 npm install
+cp .env.example .env        # fill in the three values below
+npm run dev                 # http://localhost:5173
 ```
 
-**3. Configure Environment Variables (Optional)**
+`.env` needs:
 
-If you want to use live Firebase backend:
-- Copy the `.env.example` file to `.env`:
-  ```bash
-  cp .env.example .env
-  ```
-- Paste your Firebase config keys into the new `.env` file.
+| Variable | Where to find it |
+| --- | --- |
+| `VITE_SUPABASE_URL` | Supabase → Project Settings → API |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Same page, publishable key. Never put the secret / service_role key in a `VITE_` variable. |
+| `VITE_VAPID_PUBLIC_KEY` | Public Web Push key (see below). Leave empty to run without push. |
 
-**4. Launch the Local Server**
+## Set up a Supabase project
+
+1. Apply `kavach-app/supabase/migrations/*.sql` in filename order (`supabase db push`, or paste them into the SQL editor), then `seed.sql`.
+2. Create users through Auth. A new user becomes a resident and picks their tower and flat on first sign-in. Make staff and admins with `update_member()` as an admin, or in SQL.
+3. Push notifications (optional):
+   - Generate keys with `npx web-push generate-vapid-keys --json`.
+   - Store them with the four `vault.create_secret` calls listed at the top of `20261008001100_notifications.sql`.
+   - Deploy `supabase/functions/notify` with JWT verification off; it checks its own secret header instead.
+   - Put the public key in `VITE_VAPID_PUBLIC_KEY`.
+4. In Auth settings, turn on leaked-password protection.
+
+Details of every table, policy and function are in [`kavach-app/supabase/README.md`](kavach-app/supabase/README.md).
+
+## Checks
 
 ```bash
-npm run dev
+cd kavach-app
+npm run lint
+npm run build
+node scripts/smoke-test.mjs    # needs .env and the local demo-accounts file
+node scripts/query-check.mjs
 ```
 
-> The app will launch at `http://localhost:5173`.
-> _Note: In Sandbox Mode, you can use the **Developer Sandbox Panel** at the bottom of the sign-in screen to instantly log in as a **Student**, **Responder**, or **Admin** with a single click, skipping forms and credential requirements to test workspaces instantly!_
+The smoke test signs in as each demo role and checks what each one can and cannot see or change. Its test reports are tagged `[smoke-test]`; delete them afterwards (see `docs/demo-guide.md`).
 
----
+## Deploy
 
-## ☁️ Deployment (Vercel)
+Vercel, with `kavach-app` as the root directory. Set the three `VITE_` variables in the project's environment settings. `vercel.json` adds the SPA rewrite, security headers and cache rules.
 
-Kavach is optimized for zero-config Vercel deployments:
+## Demo
 
-1. Push your repository to GitHub.
-2. Import the project in your Vercel dashboard.
-3. In the Vercel **Environment Variables** settings, copy all `VITE_FIREBASE_*` keys from your local `.env` file and paste them in.
-4. Click **Deploy**.
+See [`docs/demo-guide.md`](docs/demo-guide.md) for a five-minute walkthrough with three windows (resident, responder, admin). Demo passwords are kept out of the repository.
 
----
-
-## 🏆 The Team
-
-- **Anjum Sana**
-- **Abishek B S**
-- **Palak Malpani**
-- **Ramakrishnan P H**
-
----
-
-<div align="center">
-  <i>"Because in emergencies, every single second counts."</i>
-</div>
+Kavach does not replace 112. Every report screen also offers a direct call to 112 and the security desk.

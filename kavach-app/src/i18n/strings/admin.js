@@ -349,6 +349,11 @@ export default {
     onDutyTitle: 'On duty',
     liftsEquipment: 'Lifts & equipment',
     allEquipmentOk: 'All equipment working',
+    firstResponderSkill: "First responder ({skill})",
+    neverDone: "Never done",
+    complianceAllClear: "Nothing overdue or due in the next 2 weeks.",
+    editContacts: "Edit contacts",
+    editNotices: "Edit notices",
   },
   ta: {
     navSafetyCheck: 'பாதுகாப்பு சரிபார்ப்பு',
@@ -687,5 +692,10 @@ export default {
     onDutyTitle: 'பணியில்',
     liftsEquipment: 'லிஃப்ட் & சாதனங்கள்',
     allEquipmentOk: 'எல்லா சாதனங்களும் இயங்குகின்றன',
+    firstResponderSkill: "முதலுதவி செய்பவர் ({skill})",
+    neverDone: "இதுவரை செய்யவில்லை",
+    complianceAllClear: "தாமதமானதோ அடுத்த 2 வாரத்தில் வர வேண்டியதோ எதுவும் இல்லை.",
+    editContacts: "தொடர்புகளைத் திருத்து",
+    editNotices: "அறிவிப்புகளைத் திருத்து",
   },
 };

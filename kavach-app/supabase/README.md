@@ -24,6 +24,14 @@ psql "$DB_URL" -f supabase/seed_users.local.sql
 | `…0800_realtime.sql` | Adds tables to `supabase_realtime` |
 | `…0900_home_and_push.sql` | `set_my_home()` (resident picks tower/flat on first run), `push_subscriptions` + `save_push_subscription()` |
 | `…1000_rls_tuning.sql` | Advisor fixes: one policy per table/action, `(select auth.uid())` initplans, FK indexes, trigger functions not callable via RPC |
+| `…1100_notifications.sql` | Web Push: `pg_net` (schema `extensions`), `get_push_config()` (service_role only, reads Vault), `notify_dispatch()` triggers on incident insert/update and Safety Check start → `functions/notify`. The trigger never raises, so a push failure can't block an SOS |
+| `…1200_incident_location_fix.sql` | A report about another place no longer inherits the reporter's home flat/floor; the home flat is used only when no location is sent |
+| `…1300_review_fixes.sql` | Security review: first responders no longer read medical incident rows (reporter name/phone) directly; they use `list_medical_alerts()`, which returns only place, people affected, description and ack counts. A spot-note-only report no longer inherits the home flat. `save_push_subscription` cannot take over another account's endpoint. Write grants revoked on `v_team` / `v_compliance`; `net` queue tables hidden from API roles |
+| `…1310_location_note_fallback.sql` | A report with only a spot note (no zone, no flat) goes to the reporter's tower instead of failing with "Location (zone) is required" |
+
+## Edge Function
+
+`functions/notify/index.ts` sends Web Push (RFC 8291/8292 via `jsr:@negrel/webpush`). It is deployed with `verify_jwt = false`, because Postgres calls it through `pg_net`, not a signed-in user. Instead, every request must carry `x-kavach-hook`, which is compared in constant time with the Vault secret. The trigger payload only says what changed; the recipients and the text come from a fresh read of the row. Texts are in English or Tamil, following each recipient's language. Subscriptions that return 404/410 are deleted.
 
 ## Testing
 

@@ -1,8 +1,8 @@
 // Admin Incidents — every report in the society, live, with status / type / tower filters.
 import { useState } from 'react';
-import { ListTodo } from 'lucide-react';
+import { ChevronsUpDown, ListTodo } from 'lucide-react';
 import BottomNav from '../../components/BottomNav';
-import { Button, EmptyState, PageHeader, Segmented, TypeIcon } from '../../components/ui';
+import { Button, EmptyState, PageHeader, Segmented } from '../../components/ui';
 import { TYPE_ORDER } from '../../config/society';
 import { listenIncidents, listenZones } from '../../data/db';
 import { useT } from '../../i18n';
@@ -36,25 +36,27 @@ export default function Incidents() {
   const emptyText = hasFilters ? t('admin.noIncidentsFiltered') : status === 'active' ? t('admin.noActiveText') : t('admin.noIncidentsText');
 
   return (
-    <main className="page admin-page">
+    <main className="page admin-page admin-narrow">
       <PageHeader
         title={t('common.nav_incidents')}
         subtitle={incidents.data ? t('admin.showingN', { n: rows.length }) : undefined}
       />
 
       <div className="stack">
-        <Segmented
-          label={t('admin.statusFilter')}
-          value={status}
-          onChange={setStatus}
-          options={[
-            { value: 'active', label: t('admin.filterActive') },
-            { value: 'closed', label: t('admin.filterClosed') },
-            { value: 'all', label: t('admin.filterAll') },
-          ]}
-        />
+        <div className="admin-seg-fit">
+          <Segmented
+            label={t('admin.statusFilter')}
+            value={status}
+            onChange={setStatus}
+            options={[
+              { value: 'active', label: t('admin.filterActive') },
+              { value: 'closed', label: t('admin.filterClosed') },
+              { value: 'all', label: t('admin.filterAll') },
+            ]}
+          />
+        </div>
 
-        <div className="admin-filters" role="group" aria-label={t('admin.typeFilter')}>
+        <div className="admin-filters admin-filters--scroll" role="group" aria-label={t('admin.typeFilter')}>
           {TYPE_ORDER.map(type => (
             <button
               key={type}
@@ -63,25 +65,27 @@ export default function Incidents() {
               aria-pressed={types.includes(type)}
               onClick={() => toggleType(type)}
             >
-              <TypeIcon type={type} size="sm" />
               {t(`common.typeShort_${type}`)}
             </button>
           ))}
         </div>
 
-        <div className="row admin-filter-row">
+        <div className="admin-toolbar">
           <label htmlFor="inc-zone" className="sr-only">{t('admin.towerFilter')}</label>
-          <select
-            id="inc-zone"
-            className="select grow"
-            value={zoneId}
-            onChange={(e) => setZoneId(e.target.value)}
-          >
-            <option value="">{t('admin.allPlaces')}</option>
-            {(zones.data || []).map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
-          </select>
+          <span className="admin-popup">
+            <select
+              id="inc-zone"
+              className="admin-popup__select"
+              value={zoneId}
+              onChange={(e) => setZoneId(e.target.value)}
+            >
+              <option value="">{t('admin.allPlaces')}</option>
+              {(zones.data || []).map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+            </select>
+            <ChevronsUpDown size={16} aria-hidden="true" />
+          </span>
           {hasFilters && (
-            <Button variant="ghost" size="sm" className="admin-btn-44" onClick={clearFilters}>{t('admin.clearFilters')}</Button>
+            <Button variant="ghost" size="sm" className="admin-btn-44 admin-toolbar__end" onClick={clearFilters}>{t('admin.clearFilters')}</Button>
           )}
         </div>
 

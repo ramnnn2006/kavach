@@ -1,9 +1,9 @@
 // Admin Safety Check — start a roll call for a tower or the whole society and watch answers live.
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CircleCheck, History, ShieldCheck, Siren } from 'lucide-react';
+import { History, Siren } from 'lucide-react';
 import BottomNav from '../../components/BottomNav';
-import { Badge, Button, EmptyState, Field, PageHeader, Segmented, Stat } from '../../components/ui';
+import { Button, EmptyState, Field, PageHeader, Segmented } from '../../components/ui';
 import { TYPE_ORDER } from '../../config/society';
 import {
   endSafetyCheck, errorMessage, listenActiveSafetyCheck, listenMembers, listenZones, startSafetyCheck,
@@ -15,7 +15,7 @@ import { useT } from '../../i18n';
 import { clock, dateTime, minutesBetween, timeAgo, toMillis } from '../../utils/time';
 import { useLive, useNow } from './parts/hooks';
 import { hasVulnerability, memberFlat, vulnerabilityLabels } from './parts/format';
-import { CallLink, IconTile, LoadError, Loading } from './parts/ui';
+import { CallLink, LoadError, Loading } from './parts/ui';
 import '../../styles/admin.css';
 
 const MESSAGE_MAX = 300;
@@ -29,8 +29,8 @@ function PersonRow({ m, children, trailing }) {
   return (
     <div className="settings-row admin-person">
       <div className="grow admin-person__body">
-        <p className="semibold">{m?.full_name || t('admin.unknownPerson')}</p>
-        <p className="text-sm muted">{memberFlat(m) || t('admin.noFlat')}</p>
+        <p className="admin-person__name">{m?.full_name || t('admin.unknownPerson')}</p>
+        <p className="admin-person__meta">{memberFlat(m) || t('admin.noFlat')}</p>
         {children}
       </div>
       {trailing}
@@ -77,34 +77,29 @@ function ActiveCheck({ check, members, now }) {
     }
   };
 
+  const legend = [
+    { key: 'safe', n: summary.safe, tone: 'var(--green)' },
+    { key: 'needHelp', n: summary.need_help, tone: 'var(--red)' },
+    { key: 'notAnswered', n: summary.unanswered, tone: null },
+  ];
+
   return (
     <div className="stack-lg">
       <section className="card admin-check-live stack" aria-labelledby="check-live-title">
-        <div className="row">
-          <IconTile icon={Siren} tone="var(--red)" size="md" />
-          <div className="grow">
-            <h2 id="check-live-title" className="admin-card-title">{t('admin.checkRunning')}</h2>
-            <p className="text-sm muted">
-              {[scopeLabel(check, t), t('admin.startedAt', { time: clock(check.started_at, lang) }), timeAgo(check.started_at, now, t)].join(' · ')}
-            </p>
-          </div>
+        <div>
+          <h2 id="check-live-title" className="admin-check-live__title">
+            <span className="admin-live-dot pulse" aria-hidden="true" />
+            {t('admin.checkRunning')}
+          </h2>
+          <p className="admin-check-live__meta">
+            {[scopeLabel(check, t), t('admin.startedAt', { time: clock(check.started_at, lang) }), timeAgo(check.started_at, now, t)].join(' · ')}
+          </p>
         </div>
         <blockquote className="admin-quote">{check.message}</blockquote>
-        <Button variant="danger" onClick={end} loading={ending}>{t('admin.endCheck')}</Button>
-      </section>
-
-      {roll.error && <LoadError error={roll.error} onRetry={roll.retry} />}
-      {roll.loading ? <Loading /> : (
-        <>
-          <section className="grid-2 admin-stats" aria-label={t('admin.rollCallCounts')}>
-            <Stat value={summary.in_scope} label={t('admin.inScope')} />
-            <Stat value={summary.safe} label={t('admin.safe')} tone="var(--green)" />
-            <Stat value={summary.need_help} label={t('admin.needHelp')} tone={Number(summary.need_help) ? 'var(--red)' : undefined} />
-            <Stat value={summary.unanswered} label={t('admin.notAnswered')} tone={Number(summary.unanswered) ? 'var(--orange)' : undefined} />
-          </section>
-
-          <div className="card stack-sm">
-            <p className="semibold">{t('admin.answeredOf', { n: answeredCount, total })}</p>
+        {roll.error && <LoadError error={roll.error} onRetry={roll.retry} />}
+        {roll.loading ? <Loading /> : (
+          <div className="stack-sm" aria-label={t('admin.rollCallCounts')} role="group">
+            <p className="admin-check-live__count">{t('admin.answeredOf', { n: answeredCount, total })}</p>
             <div
               className="admin-progress"
               role="img"
@@ -114,24 +109,32 @@ function ActiveCheck({ check, members, now }) {
               <span className="admin-progress__seg" style={{ width: `${pct(summary.need_help)}%`, '--tone': 'var(--red)' }} />
             </div>
             <div className="admin-legend">
-              <span><span className="admin-legend__sw" style={{ '--tone': 'var(--green)' }} />{t('admin.safe')}</span>
-              <span><span className="admin-legend__sw" style={{ '--tone': 'var(--red)' }} />{t('admin.needHelp')}</span>
-              <span><span className="admin-legend__sw admin-legend__sw--empty" />{t('admin.notAnswered')}</span>
+              {legend.map(l => (
+                <span key={l.key}>
+                  <span
+                    className={`admin-legend__sw${l.tone ? '' : ' admin-legend__sw--empty'}`}
+                    style={l.tone ? { '--tone': l.tone } : undefined}
+                  />
+                  {t(`admin.${l.key}`)} <span className="admin-legend__n">{l.n}</span>
+                </span>
+              ))}
             </div>
           </div>
+        )}
+        <Button variant="secondary" className="admin-btn-destructive" onClick={end} loading={ending}>{t('admin.endCheck')}</Button>
+      </section>
 
+      {!roll.loading && (
+        <>
           <section aria-labelledby="help-title">
-            <h2 id="help-title" className="section-title admin-count-title">
-              <span>{t('admin.needHelp')}</span>
-              <Badge tone={needHelp.length ? 'var(--red)' : undefined}>{needHelp.length}</Badge>
-            </h2>
+            <h2 id="help-title" className="section-title">{t('admin.needHelp')} · {needHelp.length}</h2>
             {needHelp.length === 0 ? <p className="card text-sm muted">{t('admin.noneNeedHelp')}</p> : (
               <div className="card settings-group">
                 {needHelp.map(r => {
                   const m = byId.get(r.profile_id);
                   return (
                     <PersonRow key={r.id} m={m} trailing={<CallLink phone={m?.phone} name={m?.full_name} compact />}>
-                      {r.note && <p className="text-sm">{r.note}</p>}
+                      {r.note && <p className="admin-person__note">{r.note}</p>}
                       {r.incident_id && (
                         <Link to={`/incident/${r.incident_id}`} className="admin-link text-sm">{t('admin.openAlert')}</Link>
                       )}
@@ -143,19 +146,14 @@ function ActiveCheck({ check, members, now }) {
           </section>
 
           <section aria-labelledby="waiting-title">
-            <h2 id="waiting-title" className="section-title admin-count-title">
-              <span>{t('admin.notAnswered')}</span>
-              <Badge tone={notAnswered.length ? 'var(--orange)' : undefined}>{notAnswered.length}</Badge>
-            </h2>
+            <h2 id="waiting-title" className="section-title">{t('admin.notAnswered')} · {notAnswered.length}</h2>
             {notAnswered.length === 0 ? <p className="card text-sm muted">{t('admin.everyoneAnswered')}</p> : (
               <div className="card settings-group">
                 {notAnswered.map(m => {
                   const flags = vulnerabilityLabels(m.vulnerability, t);
                   return (
                     <PersonRow key={m.id} m={m} trailing={<CallLink phone={m.phone} name={m.full_name} compact />}>
-                      {flags.length > 0 && (
-                        <span className="admin-chips">{flags.map(f => <Badge key={f} tone="var(--purple)">{f}</Badge>)}</span>
-                      )}
+                      {flags.length > 0 && <p className="admin-person__note">{flags.join(' · ')}</p>}
                     </PersonRow>
                   );
                 })}
@@ -164,17 +162,14 @@ function ActiveCheck({ check, members, now }) {
           </section>
 
           <section aria-labelledby="safe-title">
-            <h2 id="safe-title" className="section-title admin-count-title">
-              <span>{t('admin.safe')}</span>
-              <Badge tone={safe.length ? 'var(--green)' : undefined}>{safe.length}</Badge>
-            </h2>
+            <h2 id="safe-title" className="section-title">{t('admin.safe')} · {safe.length}</h2>
             {safe.length === 0 ? <p className="card text-sm muted">{t('admin.noneSafeYet')}</p> : (
               <div className="card settings-group">
                 {safe.map(r => (
                   <PersonRow
                     key={r.id}
                     m={byId.get(r.profile_id)}
-                    trailing={<span className="text-sm muted">{clock(r.responded_at, lang)}</span>}
+                    trailing={<span className="admin-trailing">{clock(r.responded_at, lang)}</span>}
                   />
                 ))}
               </div>
@@ -229,14 +224,9 @@ function StartForm({ zones }) {
   };
 
   return (
-    <form className="card stack admin-form" onSubmit={start} noValidate aria-labelledby="start-title">
-      <div className="row">
-        <IconTile icon={ShieldCheck} tone="var(--gray)" size="md" />
-        <div className="grow">
-          <h2 id="start-title" className="admin-card-title">{t('admin.startSafetyCheck')}</h2>
-          <p className="text-sm muted">{t('admin.startIntro')}</p>
-        </div>
-      </div>
+    <section aria-labelledby="start-title">
+    <h2 id="start-title" className="section-title">{t('admin.startSafetyCheck')}</h2>
+    <form className="card stack admin-form" onSubmit={start} noValidate>
       <Field label={t('admin.who')}>
         <Segmented
           label={t('admin.who')}
@@ -271,17 +261,19 @@ function StartForm({ zones }) {
           onChange={(e) => setMessage(e.target.value)}
         />
       </Field>
-      <div className="admin-filters" role="group" aria-label={t('admin.presets')}>
+      <div className="admin-suggest" role="group" aria-label={t('admin.presets')}>
         {presets.map(p => (
-          <button key={p} type="button" className="admin-chip admin-chip--text" onClick={() => setMessage(p)}>{p}</button>
+          <button key={p} type="button" className="admin-suggest__item" onClick={() => setMessage(p)}>{p}</button>
         ))}
       </div>
       {error && <p className="field__error" role="alert">{error}</p>}
-      <Button type="submit" variant="danger" size="lg" loading={busy}>
+      <Button type="submit" variant="danger" className="admin-btn-wrap" loading={busy}>
         <Siren size={20} aria-hidden="true" />
         {t('admin.startSafetyCheck')}
       </Button>
     </form>
+    <p className="admin-footnote text-xs muted">{t('admin.startIntro')}</p>
+    </section>
   );
 }
 
@@ -300,38 +292,40 @@ export default function SafetyCheck() {
     <main className="page admin-page">
       <PageHeader title={t('admin.navSafetyCheck')} subtitle={t('admin.safetySubtitle')} />
 
-      {active.error && <LoadError error={active.error} onRetry={active.retry} />}
-      {members.error && <LoadError error={members.error} onRetry={members.retry} />}
-      {active.loading && <Loading />}
-      {!active.loading && !active.error && (
-        check
-          ? <ActiveCheck key={check.id} check={check} members={members.data} now={now} />
-          : <StartForm zones={zones.data} />
-      )}
+      <div className="admin-split">
+        <div className="admin-split__main">
+          {active.error && <LoadError error={active.error} onRetry={active.retry} />}
+          {members.error && <LoadError error={members.error} onRetry={members.retry} />}
+          {active.loading && <Loading />}
+          {!active.loading && !active.error && (
+            check
+              ? <ActiveCheck key={check.id} check={check} members={members.data} now={now} />
+              : <StartForm zones={zones.data} />
+          )}
+        </div>
 
-      <section aria-labelledby="past-title">
-        <h2 id="past-title" className="section-title">{t('admin.pastChecks')}</h2>
-        {past.error && <LoadError error={past.error} onRetry={past.retry} />}
-        {past.data && ended.length === 0 && (
-          <div className="card"><EmptyState icon={History} title={t('admin.noPastChecks')} text={t('admin.noPastChecksText')} /></div>
-        )}
-        {ended.length > 0 && (
-          <div className="card settings-group">
-            {ended.map(c => (
-              <div key={c.id} className="settings-row">
-                <IconTile icon={Siren} tone="var(--gray)" />
-                <div className="grow">
-                  <p className="semibold">{c.message}</p>
-                  <p className="text-sm muted">
-                    {[scopeLabel(c, t), dateTime(c.started_at, lang), t('admin.lastedMin', { n: minutesBetween(c.started_at, c.ended_at) ?? 0 })].join(' · ')}
-                  </p>
+        <section className="admin-split__side" aria-labelledby="past-title">
+          <h2 id="past-title" className="section-title">{t('admin.pastChecks')}</h2>
+          {past.error && <LoadError error={past.error} onRetry={past.retry} />}
+          {past.data && ended.length === 0 && (
+            <div className="card"><EmptyState icon={History} title={t('admin.noPastChecks')} text={t('admin.noPastChecksText')} /></div>
+          )}
+          {ended.length > 0 && (
+            <div className="card settings-group">
+              {ended.map(c => (
+                <div key={c.id} className="settings-row admin-past">
+                  <div className="grow">
+                    <p className="admin-past__title">{c.message}</p>
+                    <p className="admin-past__meta">
+                      {[scopeLabel(c, t), dateTime(c.started_at, lang), t('admin.lastedMin', { n: minutesBetween(c.started_at, c.ended_at) ?? 0 })].join(' · ')}
+                    </p>
+                  </div>
                 </div>
-                <CircleCheck size={18} className="admin-chevron" aria-hidden="true" />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
 
       <BottomNav />
     </main>

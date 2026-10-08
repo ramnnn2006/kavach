@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Avatar, Badge, Button, Spinner } from '../../../components/ui';
+import { Check } from 'lucide-react';
+import { Avatar, Button, Spinner } from '../../../components/ui';
 import { assignIncident, errorMessage, listResponders } from '../../../data/db';
 import { useToast } from '../../../context/ToastContext';
 import { useT } from '../../../i18n';
@@ -67,16 +68,18 @@ export default function AssignDialog({ inc, onClose }) {
                 <Avatar name={r.full_name} />
                 <span className="grow">
                   <span className="list-row__title rsp-block">{r.full_name}</span>
-                  <span className="rsp-badges rsp-badges--tight">
-                    <Badge tone={r.on_duty ? 'var(--green)' : 'var(--gray)'}>
-                      {r.on_duty ? t('responder.onDuty') : t('responder.offDuty')}
-                    </Badge>
-                    {handles(r)
-                      ? <Badge tone="var(--blue)">{t('responder.handlesType', { type: typeName })}</Badge>
-                      : <Badge>{t('responder.notTheirSpecialty')}</Badge>}
-                    {current && <Badge tone="var(--indigo)">{t('responder.assignedNow')}</Badge>}
+                  <span className="list-row__meta rsp-block">
+                    <span className={r.on_duty ? 'rsp-on-duty' : undefined}>{r.on_duty ? t('responder.onDuty') : t('responder.offDuty')}</span>
+                    {' · '}
+                    {handles(r) ? t('responder.handlesType', { type: typeName }) : t('responder.notTheirSpecialty')}
                   </span>
                 </span>
+                {current && busyId !== r.id && (
+                  <>
+                    <Check size={20} className="rsp-check-mark" aria-hidden="true" />
+                    <span className="sr-only">{t('responder.assignedNow')}</span>
+                  </>
+                )}
                 {busyId === r.id && <Spinner label={t('common.loading')} />}
               </button>
             );

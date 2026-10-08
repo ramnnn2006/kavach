@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CircleCheck, LogOut, Maximize, Minimize, Siren, Users, Wrench, Zap } from 'lucide-react';
-import { Badge, Logo, TypeIcon } from '../../components/ui';
+import { Logo, TypeIcon } from '../../components/ui';
 import { ASSET_STATES, getType, roleHome } from '../../config/society';
 import {
   listenActiveSafetyCheck, listenAssets, listenQueue, listenSociety, listenTeam,
@@ -13,16 +13,18 @@ import { useT } from '../../i18n';
 import { clock } from '../../utils/time';
 import { useLive, useNow } from './parts/hooks';
 import { byUrgency, elapsed, isEscalated, placeLabel } from './parts/format';
-import { IconTile, LoadError, SpecialtyChips, StaffStatus } from './parts/ui';
+import { IconTile, LoadError, SpecialtyChips } from './parts/ui';
 import { assetKind } from './parts/assetKinds';
 import '../../styles/admin.css';
 
-function Panel({ title, count, tone, children, className = '' }) {
+function Panel({ title, count, urgent, children, className = '' }) {
   return (
     <section className={`admin-board__panel ${className}`} aria-label={title}>
       <h2 className="admin-board__panel-title">
         <span>{title}</span>
-        {count != null && <Badge tone={count ? tone : undefined}>{count}</Badge>}
+        {count != null && (
+          <span className={`admin-board__panel-count${urgent && count ? ' admin-text-red' : ''}`}>{count}</span>
+        )}
       </h2>
       {children}
     </section>
@@ -84,7 +86,7 @@ export default function Board() {
           </div>
         </div>
         <div className="admin-board__status">
-          <span className={`admin-board__pill${onDG ? ' admin-board__pill--dg' : ''}`}>
+          <span className={`admin-board__power${onDG ? ' admin-board__power--dg' : ''}`}>
             <Zap size={18} aria-hidden="true" />
             {onDG ? t('admin.sourceDG') : t('admin.sourceGrid')}
           </span>
@@ -100,7 +102,7 @@ export default function Board() {
           >
             {fullscreen ? <Minimize size={22} aria-hidden="true" /> : <Maximize size={22} aria-hidden="true" />}
           </button>
-          <Link to={roleHome(role)} className="btn btn--secondary btn--sm admin-btn-44">
+          <Link to={roleHome(role)} className="btn btn--ghost btn--sm admin-btn-44">
             <LogOut size={18} aria-hidden="true" />
             {t('admin.exit')}
           </Link>
@@ -110,41 +112,46 @@ export default function Board() {
       {error && <LoadError error={error} onRetry={retryAll} />}
 
       <div className="admin-board__grid">
-        <Panel title={t('admin.openAlerts')} count={open.length} tone="var(--red)" className="admin-board__panel--open">
+        <Panel title={t('admin.openAlerts')} count={open.length} urgent className="admin-board__panel--open">
           {queue.data && open.length === 0 && <Quiet icon={CircleCheck}>{t('admin.noOpenAlerts')}</Quiet>}
-          <ol className="admin-board__list">
-            {open.map(inc => {
-              const type = getType(inc.type);
-              const Icon = type.icon;
-              const esc = isEscalated(inc);
-              return (
-                <li key={inc.id}>
-                  <Link
-                    to={`/incident/${inc.id}`}
-                    className={`admin-board__alert${esc ? ' admin-board__alert--esc' : ''}`}
-                    style={{ '--tone': type.tone }}
-                  >
-                    <span className="type-icon admin-board__icon" aria-hidden="true"><Icon size={40} /></span>
-                    <span className="admin-board__alert-body">
-                      <span className="admin-board__alert-type">{t(`common.type_${inc.type}`)}</span>
-                      <span className="admin-board__alert-place">{placeLabel(inc, t)}</span>
-                      <span className="admin-board__alert-tags">
-                        {esc && <Badge tone="var(--red)">{t('admin.escalatedLevel', { n: inc.escalation_level })}</Badge>}
-                        {inc.vulnerable && <Badge tone="var(--purple)">{t('admin.vulnerable')}</Badge>}
-                        {inc.people_affected > 1 && <Badge>{t('common.peopleCount', { n: inc.people_affected })}</Badge>}
+          {open.length > 0 && (
+            <ol className="admin-board__list">
+              {open.map(inc => {
+                const type = getType(inc.type);
+                const Icon = type.icon;
+                const esc = isEscalated(inc);
+                return (
+                  <li key={inc.id}>
+                    <Link to={`/incident/${inc.id}`} className="admin-board__alert">
+                      <span className="type-icon admin-board__icon" style={{ '--tone': type.tone }} aria-hidden="true"><Icon size={32} /></span>
+                      <span className="admin-board__alert-body">
+                        <span className="admin-board__alert-type">{t(`common.type_${inc.type}`)}</span>
+                        <span className="admin-board__alert-place">{placeLabel(inc, t)}</span>
+                        {(esc || inc.vulnerable || inc.people_affected > 1) && (
+                          <span className="admin-board__alert-tags">
+                            {[
+                              esc && <span key="esc" className="admin-text-red">{t('admin.escalatedLevel', { n: inc.escalation_level })}</span>,
+                              inc.vulnerable && <span key="vul">{t('admin.vulnerable')}</span>,
+                              inc.people_affected > 1 && <span key="ppl">{t('common.peopleCount', { n: inc.people_affected })}</span>,
+                            ].filter(Boolean).flatMap((el, i) => (i ? [' · ', el] : [el]))}
+                          </span>
+                        )}
                       </span>
-                    </span>
-                    <span className="admin-board__age" aria-label={t('admin.waitingFor', { time: elapsed(inc.created_at, now) })}>
-                      {elapsed(inc.created_at, now)}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ol>
+                      <span
+                        className={`admin-board__age${esc ? ' admin-text-red' : ''}`}
+                        aria-label={t('admin.waitingFor', { time: elapsed(inc.created_at, now) })}
+                      >
+                        {elapsed(inc.created_at, now)}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
         </Panel>
 
-        <Panel title={t('admin.inProgress')} count={inProgress.length} tone="var(--blue)">
+        <Panel title={t('admin.inProgress')} count={inProgress.length}>
           {queue.data && inProgress.length === 0 && <Quiet icon={CircleCheck}>{t('admin.nothingInProgress')}</Quiet>}
           <ul className="admin-board__rows">
             {inProgress.map(inc => (
@@ -155,14 +162,14 @@ export default function Board() {
                     <span className="admin-board__row-title">{t(`common.typeShort_${inc.type}`)} · {placeLabel(inc, t)}</span>
                     <span className="admin-board__row-meta">{inc.assigned_name || t('admin.unassigned')} · {elapsed(inc.created_at, now)}</span>
                   </span>
-                  <StaffStatus status={inc.status} />
+                  <span className="admin-trailing">{t(`common.staffStatus_${inc.status}`)}</span>
                 </Link>
               </li>
             ))}
           </ul>
         </Panel>
 
-        <Panel title={t('admin.onDutyTitle')} count={onDuty.length} tone="var(--green)">
+        <Panel title={t('admin.onDutyTitle')} count={onDuty.length}>
           {team.data && onDuty.length === 0 && <Quiet icon={Users}>{t('admin.nobodyOnDuty')}</Quiet>}
           <ul className="admin-board__rows">
             {onDuty.map(m => (
@@ -174,13 +181,13 @@ export default function Board() {
                     {m.specialties?.length ? <SpecialtyChips specialties={m.specialties} /> : t(`common.role_${m.role}`)}
                   </span>
                 </span>
-                {m.active_load > 0 && <Badge tone="var(--blue)">{t('admin.activeLoad', { n: m.active_load })}</Badge>}
+                {m.active_load > 0 && <span className="admin-trailing">{t('admin.activeLoad', { n: m.active_load })}</span>}
               </li>
             ))}
           </ul>
         </Panel>
 
-        <Panel title={t('admin.liftsEquipment')} count={faulty.length} tone="var(--orange)">
+        <Panel title={t('admin.liftsEquipment')} count={faulty.length}>
           {assets.data && faulty.length === 0 && <Quiet icon={Wrench}>{t('admin.allEquipmentOk')}</Quiet>}
           <ul className="admin-board__rows">
             {faulty.map(a => {
@@ -192,7 +199,9 @@ export default function Board() {
                     <span className="admin-board__row-title">{a.name}</span>
                     {a.notes && <span className="admin-board__row-meta">{a.notes}</span>}
                   </span>
-                  <Badge tone={ASSET_STATES[a.state]?.tone}>{t(`admin.asset_${a.state}`)}</Badge>
+                  <span className="admin-trailing admin-trailing--tone" style={{ '--tone': ASSET_STATES[a.state]?.tone }}>
+                    {t(`admin.asset_${a.state}`)}
+                  </span>
                 </li>
               );
             })}
@@ -208,10 +217,13 @@ export default function Board() {
                 {(check.data.zone?.name || t('admin.wholeSociety'))} · {t('admin.startedAt', { time: clock(check.data.started_at, lang) })}
               </p>
               {summary && (
-                <div className="admin-board__counts">
-                  <div><span className="admin-board__count admin-text-green">{summary.safe}</span><span>{t('admin.safe')}</span></div>
-                  <div><span className="admin-board__count admin-text-red">{summary.need_help}</span><span>{t('admin.needHelp')}</span></div>
-                  <div><span className="admin-board__count admin-warn-text">{summary.unanswered}</span><span>{t('admin.notAnswered')}</span></div>
+                <div className="admin-figures admin-figures--3">
+                  <div className="admin-figure"><p className="admin-figure__value">{summary.safe}</p><p className="admin-figure__label">{t('admin.safe')}</p></div>
+                  <div className="admin-figure">
+                    <p className={`admin-figure__value${Number(summary.need_help) ? ' admin-text-red' : ''}`}>{summary.need_help}</p>
+                    <p className="admin-figure__label">{t('admin.needHelp')}</p>
+                  </div>
+                  <div className="admin-figure"><p className="admin-figure__value">{summary.unanswered}</p><p className="admin-figure__label">{t('admin.notAnswered')}</p></div>
                 </div>
               )}
             </div>

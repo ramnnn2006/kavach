@@ -1,5 +1,5 @@
-// Society contacts and public emergency numbers, each one tap to call.
-import { CircleAlert, Phone, ShieldCheck, Siren } from 'lucide-react';
+// Society contacts and public emergency numbers; tap a row to call.
+import { CircleAlert } from 'lucide-react';
 import BottomNav from '../../components/BottomNav';
 import { AlertBanner, Button, PageHeader, Spinner } from '../../components/ui';
 import { errorMessage } from '../../data/db';
@@ -7,20 +7,18 @@ import { listenContacts } from '../../data/resident';
 import { PUBLIC_EMERGENCY } from '../../config/society';
 import { useT } from '../../i18n';
 import { useLive } from './parts/hooks';
-import CallLink from './parts/CallLink';
+import CallRow from './parts/CallRow';
 import '../../styles/resident.css';
 
-function ContactRow({ name, role, available, phone, icon: Icon, tone, t }) {
+function ContactRow({ name, role, available, phone, t }) {
   return (
-    <div className="settings-row">
-      <span className="type-icon type-icon--sm" style={{ '--tone': tone }} aria-hidden="true"><Icon size={18} /></span>
-      <div className="grow res-contact">
-        <p className="semibold">{name}</p>
-        <p className="text-sm muted">{[role, available].filter(Boolean).join(' · ')}</p>
-        <p className="text-sm muted mono">{phone}</p>
-      </div>
-      <CallLink phone={phone} label={t('common.call')} ariaLabel={t('resident.callNamed', { name })} />
-    </div>
+    <CallRow
+      phone={phone}
+      title={name}
+      detail={[role, available].filter(Boolean).join(' · ')}
+      number={phone}
+      ariaLabel={t('resident.callNamed', { name })}
+    />
   );
 }
 
@@ -36,7 +34,7 @@ export default function Contacts() {
 
   return (
     <main className="page res-page">
-      <PageHeader title={t('resident.contactsTitle')} subtitle={t('resident.contactsSub')} />
+      <PageHeader title={t('resident.contactsTitle')} />
 
       <div className="stack">
         {error && !data && (
@@ -59,8 +57,6 @@ export default function Contacts() {
                   role={c.role_label}
                   available={c.available}
                   phone={c.phone}
-                  icon={ShieldCheck}
-                  tone="var(--blue)"
                   t={t}
                 />
               ))}
@@ -80,8 +76,6 @@ export default function Contacts() {
                 role={c.role_label}
                 available={c.available}
                 phone={c.phone}
-                icon={c.phone === '112' ? Siren : Phone}
-                tone="var(--red)"
                 t={t}
               />
             ))}

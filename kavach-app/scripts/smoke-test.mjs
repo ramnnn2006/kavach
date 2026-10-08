@@ -89,7 +89,14 @@ const { data: med } = await arjun.from('incidents')
   .insert({ type: 'medical', description: '[smoke-test] fall', client_id: crypto.randomUUID() })
   .select('id, vulnerable, urgency_score').single();
 ok(med?.vulnerable === true, `vulnerable reporter flagged (urgency ${med?.urgency_score})`);
-ok(await sees(priya, med.id), 'community first responder sees medical report');
+// First responders no longer read medical rows directly; they get a trimmed list via an RPC
+ok(!(await sees(priya, med.id)), 'community first responder cannot read the incident row directly');
+const { data: alerts } = await priya.rpc('list_medical_alerts');
+const alert = (alerts || []).find(a => a.id === med.id);
+ok(!!alert, 'community first responder sees medical alert via list_medical_alerts');
+ok(alert && !('reporter_name' in alert) && !('reporter_phone' in alert), 'medical alert list carries no reporter name or phone');
+const { data: arjunAlerts } = await arjun.rpc('list_medical_alerts');
+ok((arjunAlerts || []).length === 0, 'non-first-responder gets no medical alerts from list_medical_alerts');
 ok(await sees(ramesh, med.id), 'security responder sees medical report');
 ok(!(await sees(suresh, med.id)), 'maintenance responder does NOT see medical report');
 const { error: ackErr } = await priya.rpc('first_responder_ack', { p_incident_id: med.id });

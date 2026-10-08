@@ -3,18 +3,12 @@ import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Phone, RotateCw, TriangleAlert, X } from 'lucide-react';
-import { AlertBanner, Badge, Button, Spinner, TypeIcon } from '../../../components/ui';
-import { getStatus, getType, isActive } from '../../../config/society';
+import { AlertBanner, Button, Spinner, TypeIcon } from '../../../components/ui';
+import { isActive } from '../../../config/society';
 import { errorMessage } from '../../../data/db';
 import { useT } from '../../../i18n';
 import { dateTime, timeAgo } from '../../../utils/time';
-import { isEscalated, placeLabel, urgencyTone } from './format';
-
-/** Staff wording status pill ("Open", "Claimed", …). */
-export function StaffStatus({ status }) {
-  const { t } = useT();
-  return <Badge tone={getStatus(status).tone}>{t(`common.staffStatus_${status}`)}</Badge>;
-}
+import { isEscalated, placeLabel } from './format';
 
 /** Solid Settings-style icon tile for non-incident things (power, compliance…). */
 export function IconTile({ icon: Icon, tone, size = 'sm' }) {
@@ -58,22 +52,28 @@ export function CallLink({ phone, name, compact }) {
   if (!phone) return null;
   return (
     <a
-      className="btn btn--secondary btn--sm admin-call"
+      className={`btn ${compact ? 'btn--ghost admin-call--icon' : 'btn--secondary btn--sm'} admin-call`}
       href={`tel:${phone.replace(/\s+/g, '')}`}
       aria-label={t('admin.callName', { name: name || phone })}
+      title={t('admin.callName', { name: name || phone })}
       style={{ minHeight: 44 }}
     >
-      <Phone size={18} aria-hidden="true" />
+      <Phone size={compact ? 20 : 18} aria-hidden="true" />
       {!compact && <span>{t('common.call')}</span>}
     </a>
   );
 }
 
-/** One incident as a grouped-list row linking to /incident/:id, with an optional trailing action. */
+/**
+ * One incident as a grouped-list row linking to /incident/:id, with an optional trailing action.
+ * Mail-style: type + time on the first line, place, then status · who · urgency as plain text.
+ */
 export function IncidentRow({ inc, now, action, showReporter = true }) {
   const { t, lang } = useT();
   const active = isActive(inc.status);
   const when = active ? timeAgo(inc.created_at, now, t) : dateTime(inc.created_at, lang);
+  const escalated = active && isEscalated(inc);
+  const urgent = active && inc.urgency_score >= 70;
   return (
     <div className="settings-row admin-inc">
       <Link to={`/incident/${inc.id}`} className="admin-inc__link">
@@ -81,27 +81,32 @@ export function IncidentRow({ inc, now, action, showReporter = true }) {
         <span className="admin-inc__body">
           <span className="admin-inc__top">
             <span className="admin-inc__title">{t(`common.type_${inc.type}`)}</span>
-            <StaffStatus status={inc.status} />
+            <span className="admin-inc__time">{when}</span>
           </span>
           <span className="admin-inc__meta">
             {placeLabel(inc, t)}
             {showReporter && inc.reporter_name ? ` · ${inc.reporter_name}` : ''}
           </span>
-          <span className="admin-inc__meta admin-inc__meta--wrap">
+          <span className="admin-inc__state">
+            <span>{t(`common.staffStatus_${inc.status}`)}</span>
+            {' · '}
             <span className={inc.assigned_name ? undefined : 'admin-unassigned'}>
               {inc.assigned_name || t('admin.unassigned')}
             </span>
-            {` · ${when}`}
-          </span>
-          <span className="admin-inc__tags">
             {active && (
-              <Badge tone={urgencyTone(inc.urgency_score)}>{t('admin.urgencyN', { n: inc.urgency_score })}</Badge>
+              <>
+                {' · '}
+                <span className={urgent ? 'admin-text-red' : undefined}>{t('admin.urgencyN', { n: inc.urgency_score })}</span>
+              </>
             )}
-            {active && isEscalated(inc) && (
-              <Badge tone="var(--red)">{t('admin.escalatedLevel', { n: inc.escalation_level })}</Badge>
-            )}
-            {inc.vulnerable && <Badge tone="var(--purple)">{t('admin.vulnerable')}</Badge>}
           </span>
+          {(escalated || inc.vulnerable) && (
+            <span className="admin-inc__flags">
+              {escalated && <span className="admin-text-red">{t('admin.escalatedLevel', { n: inc.escalation_level })}</span>}
+              {escalated && inc.vulnerable && ' · '}
+              {inc.vulnerable && <span className="admin-inc__flag">{t('admin.vulnerable')}</span>}
+            </span>
+          )}
         </span>
         {!action && <ChevronRight size={18} className="admin-chevron" aria-hidden="true" />}
       </Link>
@@ -110,14 +115,16 @@ export function IncidentRow({ inc, now, action, showReporter = true }) {
   );
 }
 
-/** Small chips for a responder's specialties. */
+/** A responder's specialties as plain text ("Lift, Power, Water"); `highlight` is emphasised. */
 export function SpecialtyChips({ specialties, highlight }) {
   const { t } = useT();
   if (!specialties?.length) return null;
   return (
-    <span className="admin-chips">
-      {specialties.map(s => (
-        <Badge key={s} tone={s === highlight ? getType(s).tone : undefined}>{t(`common.typeShort_${s}`)}</Badge>
+    <span className="admin-specs">
+      {specialties.map((s, i) => (
+        <span key={s} className={s === highlight ? 'admin-specs__hit' : undefined}>
+          {t(`common.typeShort_${s}`)}{i < specialties.length - 1 ? ', ' : ''}
+        </span>
       ))}
     </span>
   );

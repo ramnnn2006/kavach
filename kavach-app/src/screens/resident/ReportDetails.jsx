@@ -2,9 +2,9 @@
 // Offline or a failed network send goes to the outbox and is re-sent automatically.
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ArrowUpDown, CircleAlert, CircleHelp, CloudOff, House, MapPin, Minus, Plus } from 'lucide-react';
+import { CircleAlert, CloudOff, House, MapPin, Minus, Plus } from 'lucide-react';
 import BottomNav from '../../components/BottomNav';
-import { AlertBanner, Badge, Button, Field, IconButton, PageHeader, Spinner } from '../../components/ui';
+import { AlertBanner, Button, Field, IconButton, PageHeader, Spinner } from '../../components/ui';
 import { createIncident, errorMessage, listAssets, listZones } from '../../data/db';
 import { addToOutbox, flushOutbox, markSent, onOutboxSent, startOutboxSync } from '../../data/outbox';
 import { ASSET_STATES, INCIDENT_TYPES } from '../../config/society';
@@ -12,11 +12,13 @@ import { useAuth } from '../../context/AuthContext';
 import { useT } from '../../i18n';
 import { floorLabel, homeLine, newClientId } from './parts/format';
 import CallLink from './parts/CallLink';
+import CallRow from './parts/CallRow';
 import RadioRow from './parts/RadioRow';
 import '../../styles/resident.css';
 
 const MAX_PEOPLE = 50;
 const NOTE_MAX = 500;
+const NOTE_WARN = 100; // show the characters-left count only near the limit
 const SPOT_MAX = 200;
 const SEND_TIMEOUT_MS = 15000;
 const QUEUE_CODES = ['offline', 'timeout', 'unknown'];
@@ -195,8 +197,13 @@ function ReportForm({ type }) {
             <p className="muted">{t('resident.queuedText')}</p>
           </section>
           <CallLink phone={securityPhone} label={t('resident.callSecurity')} variant="danger" size="lg" block />
-          <CallLink phone="112" label={t('resident.call112')} variant="secondary" size="lg" block />
-          <Button variant="secondary" block loading={retrying} onClick={retryNow}>{t('resident.sendNow')}</Button>
+          <div className="card settings-group">
+            <CallRow phone="112" title={t('resident.call112')} detail={t('resident.contact112')} ariaLabel={t('resident.call112')} />
+            <button type="button" className="settings-row res-link-row" onClick={retryNow} disabled={retrying} aria-busy={retrying || undefined}>
+              <span className="grow">{t('resident.sendNow')}</span>
+              {retrying && <Spinner label={t('common.loading')} />}
+            </button>
+          </div>
           <Button variant="ghost" block onClick={() => navigate('/resident')}>{t('resident.backHome')}</Button>
         </div>
         <BottomNav />
@@ -311,21 +318,17 @@ function ReportForm({ type }) {
                   key={lift.id}
                   checked={assetId === lift.id}
                   onSelect={() => setAssetId(lift.id)}
-                  icon={<ArrowUpDown size={18} />}
-                  tone="var(--t-lift)"
                   title={lift.name}
-                  trailing={(
-                    <Badge tone={(ASSET_STATES[lift.state] || ASSET_STATES.ok).tone}>
+                  trailing={lift.state && lift.state !== 'ok' && (
+                    <span className="res-trailing" style={{ color: (ASSET_STATES[lift.state] || ASSET_STATES.ok).tone }}>
                       {t(`resident.liftState_${lift.state}`)}
-                    </Badge>
+                    </span>
                   )}
                 />
               ))}
               <RadioRow
                 checked={!assetId}
                 onSelect={() => setAssetId('')}
-                icon={<CircleHelp size={18} />}
-                tone="var(--gray)"
                 title={t('resident.liftNotSure')}
               />
             </div>
@@ -343,27 +346,25 @@ function ReportForm({ type }) {
         )}
 
         {/* People */}
-        <section aria-labelledby="res-people-title">
-          <h2 id="res-people-title" className="section-title">{t('resident.peopleTitle')}</h2>
-          <div className="card res-people">
-            <div className="grow">
-              <p id="res-people-label" className="semibold">{t('resident.peopleLabel')}</p>
-              <p className="text-sm muted">{t('resident.peopleHint')}</p>
-            </div>
-            <div className="counter" role="group" aria-labelledby="res-people-label">
-              <IconButton label={t('resident.fewer')} disabled={people <= 1} onClick={() => setPeople(p => Math.max(1, p - 1))}>
-                <Minus size={20} aria-hidden="true" />
-              </IconButton>
-              <span className="counter__value" aria-live="polite">{people}</span>
-              <IconButton label={t('resident.more')} disabled={people >= MAX_PEOPLE} onClick={() => setPeople(p => Math.min(MAX_PEOPLE, p + 1))}>
-                <Plus size={20} aria-hidden="true" />
-              </IconButton>
-            </div>
+        <section className="card res-people" aria-labelledby="res-people-label">
+          <div className="grow">
+            <h2 id="res-people-label" className="res-people__label">{t('resident.peopleLabel')}</h2>
+            <p className="res-people__hint">{t('resident.peopleHint')}</p>
+          </div>
+          <div className="counter" role="group" aria-labelledby="res-people-label">
+            <IconButton label={t('resident.fewer')} disabled={people <= 1} onClick={() => setPeople(p => Math.max(1, p - 1))}>
+              <Minus size={20} aria-hidden="true" />
+            </IconButton>
+            <span className="counter__value" aria-live="polite">{people}</span>
+            <IconButton label={t('resident.more')} disabled={people >= MAX_PEOPLE} onClick={() => setPeople(p => Math.min(MAX_PEOPLE, p + 1))}>
+              <Plus size={20} aria-hidden="true" />
+            </IconButton>
           </div>
         </section>
 
         {/* Note */}
-        <Field label={t('resident.noteLabel')} htmlFor="res-note" hint={t('resident.charsLeft', { n: NOTE_MAX - note.length })}>
+        <section>
+          <label htmlFor="res-note" className="section-title res-label">{t('resident.noteLabel')}</label>
           <textarea
             id="res-note"
             className="textarea"
@@ -371,9 +372,13 @@ function ReportForm({ type }) {
             maxLength={NOTE_MAX}
             value={note}
             placeholder={t(`resident.notePlaceholder_${type}`)}
+            aria-describedby={NOTE_MAX - note.length <= NOTE_WARN ? 'res-note-left' : undefined}
             onChange={(e) => setNote(e.target.value)}
           />
-        </Field>
+          {NOTE_MAX - note.length <= NOTE_WARN && (
+            <p id="res-note-left" className="res-footer">{t('resident.charsLeft', { n: NOTE_MAX - note.length })}</p>
+          )}
+        </section>
 
         {formError?.field === 'server' && (
           <AlertBanner tone="var(--red)" icon={CircleAlert} role="alert">
@@ -384,9 +389,9 @@ function ReportForm({ type }) {
           </AlertBanner>
         )}
 
-        <p className="text-sm muted res-footnote">
+        <p className="res-footer">
           {t('resident.lifeDanger')}{' '}
-          <a href="tel:112" className="res-link">{t('resident.call112')}</a>
+          <a href="tel:112" className="res-inline-link">{t('resident.call112')}</a>
         </p>
 
         <div className="res-send-bar">

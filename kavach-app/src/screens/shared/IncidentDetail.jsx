@@ -14,7 +14,7 @@ import { covers } from '../../data/responder';
 import { useT } from '../../i18n';
 import { dateTime, minutesBetween, timeAgo } from '../../utils/time';
 import AssignDialog from '../responder/parts/AssignDialog';
-import { IncidentBadges, StaffStatusBadge } from '../responder/parts/IncidentBadges';
+import { StatusText } from '../responder/parts/IncidentBadges';
 import LoadError from '../responder/parts/LoadError';
 import NoteDialog from '../responder/parts/NoteDialog';
 import Timeline from '../responder/parts/Timeline';
@@ -120,20 +120,15 @@ export default function IncidentDetail() {
   const back = typeof window !== 'undefined' && window.history.length > 1 ? true : roleHome(role);
   const typeLabel = inc ? t(`common.type_${inc.type}`) : '';
   const place = inc ? placeLine(inc, t) : '';
-  const vuln = inc ? vulnerabilityFull(inc.reporter_vulnerability, t) : '';
+  const vuln = inc ? (vulnerabilityFull(inc.reporter_vulnerability, t) || (inc.vulnerable ? t('responder.vulnerableBadge') : '')) : '';
   const ageLine = !inc ? '' : inc.status === 'resolved' && inc.resolved_at
-    ? t('responder.resolvedIn', { d: formatDuration(minutesBetween(inc.created_at, inc.resolved_at), t) })
+    ? t('responder.tookTime', { d: formatDuration(minutesBetween(inc.created_at, inc.resolved_at), t) })
     : active ? t('responder.openFor', { d: formatDuration(minutesBetween(inc.created_at, now), t) }) : '';
   const showAcks = inc && (inc.type === 'medical' || acks.length > 0);
 
   return (
     <main className="page rsp-detail">
-      <PageHeader
-        compact
-        back={back}
-        title={t('responder.detailTitle')}
-        action={inc ? <StaffStatusBadge status={inc.status} /> : null}
-      />
+      <PageHeader back={back} title={inc ? typeLabel : t('responder.detailTitle')} subtitle={place || undefined} />
 
       {error && (
         <div className="stack" style={{ marginBottom: 'var(--s-3)' }}>
@@ -162,13 +157,15 @@ export default function IncidentDetail() {
             <p className="muted">{t('responder.printedAt', { time: dateTime(now, lang) })}</p>
           </div>
 
-          <Card className="rsp-hero">
-            <TypeIcon type={inc.type} size="lg" />
-            <div className="grow">
-              <h2 className="rsp-hero__title">{typeLabel}</h2>
-              {place && <p className="rsp-hero__place">{place}</p>}
-              <IncidentBadges inc={inc} />
-              {ageLine && <p className="rsp-hero__age">{ageLine}</p>}
+          <div className="rsp-detail-grid">
+          <div className="stack">
+          <Card className="settings-group">
+            <div className="settings-row rsp-hero">
+              <TypeIcon type={inc.type} />
+              <div className="grow">
+                <p className="rsp-hero__status"><StatusText status={inc.status} /></p>
+                {ageLine && <p className="rsp-hero__age">{ageLine}</p>}
+              </div>
             </div>
           </Card>
 
@@ -189,7 +186,7 @@ export default function IncidentDetail() {
                 </Button>
               )}
               {canResolveEarly && (
-                <Button block variant="secondary" onClick={() => setDialog('resolve')} disabled={busy !== null}>
+                <Button block variant="ghost" className="rsp-tap" onClick={() => setDialog('resolve')} disabled={busy !== null}>
                   {t('responder.actionResolve')}
                 </Button>
               )}
@@ -210,9 +207,12 @@ export default function IncidentDetail() {
               <InfoRow label={t('responder.peopleAffected')}>{peopleLabel(inc.people_affected, t)}</InfoRow>
               {inc.description && <InfoRow label={t('responder.description')}><span className="rsp-pre">{inc.description}</span></InfoRow>}
               {inc.location_note && <InfoRow label={t('responder.locationNote')}>{inc.location_note}</InfoRow>}
-              {inc.asset_name && <InfoRow label={t('responder.equipment')}>{inc.asset_name}</InfoRow>}
-              <InfoRow label={t('responder.urgencyLabel')}>{t('responder.urgencyValue', { n: inc.urgency_score })}</InfoRow>
-              <InfoRow label={t('responder.escalationLabel')}>{t('responder.escalationValue', { n: inc.escalation_level })}</InfoRow>
+              <InfoRow label={t('responder.urgencyLabel')}>
+                {t('responder.urgencyValue', { n: inc.urgency_score })}
+                {inc.escalation_level > 1 && (
+                  <span className="rsp-flag--red"> · {t('responder.escalated', { n: inc.escalation_level })}</span>
+                )}
+              </InfoRow>
               <InfoRow label={t('responder.reportedAt')}>
                 {dateTime(inc.created_at, lang)} · {timeAgo(inc.created_at, now, t)}
               </InfoRow>
@@ -257,12 +257,15 @@ export default function IncidentDetail() {
             </section>
           )}
 
-          <section aria-labelledby="rsp-detail-timeline">
+          </div>
+
+          <section aria-labelledby="rsp-detail-timeline" className="rsp-detail-side">
             <h2 id="rsp-detail-timeline" className="section-title">{t('responder.timeline')}</h2>
             <Card>
               <Timeline events={events} />
             </Card>
           </section>
+          </div>
         </div>
       )}
 

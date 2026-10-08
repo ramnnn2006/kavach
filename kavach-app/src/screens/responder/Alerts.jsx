@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BellOff, CircleCheck, Inbox, Volume2, VolumeX } from 'lucide-react';
+import { Inbox, Volume2, VolumeX } from 'lucide-react';
 import BottomNav from '../../components/BottomNav';
-import { AlertBanner, Button, Card, EmptyState, IconButton, PageHeader, Spinner, Switch } from '../../components/ui';
+import { Button, Card, EmptyState, IconButton, PageHeader, Spinner, Switch } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { advanceIncident, claimIncident, errorMessage, listenQueue, setOnDuty } from '../../data/db';
 import { useAlertSound } from '../../hooks/useAlertSound';
 import { useT } from '../../i18n';
-import IncidentCard from './parts/IncidentCard';
+import { MyJob, OpenAlertRow } from './parts/IncidentCard';
 import LoadError from './parts/LoadError';
 import NoteDialog from './parts/NoteDialog';
 import { specialtySummary } from './parts/format';
@@ -117,32 +117,27 @@ export default function Alerts() {
   };
 
   const headerAction = (
-    <div className="rsp-header-actions">
-      <div className="rsp-duty">
-        <span className="rsp-duty__label" aria-hidden="true">{onDuty ? t('responder.onDuty') : t('responder.offDuty')}</span>
-        <Switch checked={onDuty} onChange={toggleDuty} label={t('responder.onDuty')} disabled={dutyPending !== null} />
-      </div>
-      <IconButton label={t('responder.muteSound')} aria-pressed={muted} onClick={onMute}>
-        {muted ? <VolumeX size={22} aria-hidden="true" /> : <Volume2 size={22} aria-hidden="true" />}
-      </IconButton>
-    </div>
+    <IconButton label={t('responder.muteSound')} aria-pressed={muted} onClick={onMute}>
+      {muted ? <VolumeX size={22} aria-hidden="true" /> : <Volume2 size={22} aria-hidden="true" />}
+    </IconButton>
   );
 
   const loading = rows === null && !error;
 
   return (
-    <main className="page">
+    <main className="page rsp-narrow">
       <PageHeader eyebrow={specialtySummary(profile, t)} title={t('responder.alertsTitle')} action={headerAction} />
 
       <div className="stack">
-        {!onDuty && (
-          <AlertBanner tone="var(--orange)" icon={BellOff}>
-            <p>{t('responder.offDutyBanner')}</p>
-            <Button size="sm" variant="secondary" className="rsp-banner-btn" onClick={() => toggleDuty(true)} disabled={dutyPending !== null}>
-              {t('responder.goOnDuty')}
-            </Button>
-          </AlertBanner>
-        )}
+        <Card className="settings-group">
+          <div className="settings-row rsp-duty">
+            <span className="grow">
+              <span className="rsp-duty__title">{t('responder.onDuty')}</span>
+              <span className="rsp-duty__detail">{onDuty ? t('responder.onDutyDetail') : t('responder.offDutyBanner')}</span>
+            </span>
+            <Switch checked={onDuty} onChange={toggleDuty} label={t('responder.onDuty')} disabled={dutyPending !== null} />
+          </div>
+        </Card>
 
         {error && (
           <LoadError title={t('responder.alertsLoadError')} error={error} onRetry={() => { setError(null); setAttempt(a => a + 1); }} />
@@ -150,64 +145,48 @@ export default function Alerts() {
 
         {loading && <div className="rsp-center"><Spinner large label={t('common.loading')} /></div>}
 
-        {rows !== null && (
-          <>
-            <section aria-labelledby="rsp-sec-mine">
-              <h2 id="rsp-sec-mine" className="section-title">
-                {t('responder.sectionMine')}{mine.length > 0 && ` · ${mine.length}`}
-              </h2>
-              {mine.length ? (
-                <div className="rsp-cards">
-                  {mine.map(inc => (
-                    <IncidentCard
-                      key={inc.id}
-                      inc={inc}
-                      now={now}
-                      variant="mine"
-                      busy={Boolean(busy[inc.id])}
-                      onAdvance={advance}
-                      onResolve={setResolving}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <Card>
-                  <EmptyState icon={CircleCheck} title={t('responder.emptyMineTitle')} text={t('responder.emptyMineText')} />
-                </Card>
-              )}
-            </section>
+        {rows !== null && mine.length > 0 && (
+          <section aria-labelledby="rsp-sec-mine">
+            <h2 id="rsp-sec-mine" className="section-title">{t('responder.sectionMine')} · {mine.length}</h2>
+            <div className="rsp-jobs">
+              {mine.map(inc => (
+                <MyJob
+                  key={inc.id}
+                  inc={inc}
+                  now={now}
+                  busy={Boolean(busy[inc.id])}
+                  onAdvance={advance}
+                  onResolve={setResolving}
+                />
+              ))}
+            </div>
+          </section>
+        )}
 
-            <section aria-labelledby="rsp-sec-open">
-              <h2 id="rsp-sec-open" className="section-title">
-                {t('responder.sectionOpen')}{open.length > 0 && ` · ${open.length}`}
-              </h2>
-              {open.length ? (
-                <div className="rsp-cards">
-                  {open.map(inc => (
-                    <IncidentCard
-                      key={inc.id}
-                      inc={inc}
-                      now={now}
-                      variant="open"
-                      busy={Boolean(busy[inc.id])}
-                      onClaim={claim}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <Card>
-                  <EmptyState
-                    icon={Inbox}
-                    title={t('responder.emptyOpenTitle')}
-                    text={onDuty ? t('responder.emptyOpenText') : t('responder.emptyOpenOffText')}
-                    action={onDuty
-                      ? <Button variant="secondary" onClick={() => navigate('/responder/checks')}>{t('responder.seeChecks')}</Button>
-                      : <Button onClick={() => toggleDuty(true)} disabled={dutyPending !== null}>{t('responder.goOnDuty')}</Button>}
-                  />
-                </Card>
-              )}
-            </section>
-          </>
+        {rows !== null && (
+          <section aria-labelledby="rsp-sec-open">
+            <h2 id="rsp-sec-open" className="section-title">{t('responder.sectionOpen')}{open.length > 0 && ` · ${open.length}`}</h2>
+            {open.length ? (
+              <Card className="settings-group">
+                {open.map(inc => (
+                  <OpenAlertRow key={inc.id} inc={inc} now={now} busy={Boolean(busy[inc.id])} onClaim={claim} />
+                ))}
+              </Card>
+            ) : (
+              <Card>
+                <EmptyState
+                  icon={Inbox}
+                  title={t('responder.emptyOpenTitle')}
+                  text={onDuty ? t('responder.emptyOpenText') : t('responder.emptyOpenOffText')}
+                  action={onDuty && (
+                    <Button variant="secondary" size="sm" className="rsp-tap" onClick={() => navigate('/responder/checks')}>
+                      {t('responder.seeChecks')}
+                    </Button>
+                  )}
+                />
+              </Card>
+            )}
+          </section>
         )}
       </div>
 
