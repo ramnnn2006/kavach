@@ -3,6 +3,8 @@ export default {
   en: {
     tagline: 'Emergency help for your apartment society',
     signIn: 'Sign in',
+    google: 'Continue with Google',
+    or: 'or',
     register: 'Register',
     fullName: 'Full name',
     phone: 'Mobile number',
@@ -43,6 +45,8 @@ export default {
   ta: {
     tagline: 'உங்கள் அடுக்குமாடி சொசைட்டிக்கான அவசர உதவி',
     signIn: 'உள்நுழை',
+    google: 'Google மூலம் தொடரவும்',
+    or: 'அல்லது',
     register: 'பதிவு செய்',
     fullName: 'முழுப் பெயர்',
     phone: 'கைபேசி எண்',

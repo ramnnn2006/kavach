@@ -99,6 +99,16 @@ export function AuthProvider({ children }) {
     if (error) throw new Error(friendlyAuthError(error));
   }, []);
 
+  // Redirects to Google, then back to this origin with a session. New Google users get a
+  // profile from the handle_new_user trigger and pick their flat on the Welcome screen.
+  const signInWithGoogle = useCallback(async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) throw new Error(friendlyAuthError(error));
+  }, []);
+
   const signUp = useCallback(async ({ email, password, fullName, phone }) => {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
@@ -144,12 +154,13 @@ export function AuthProvider({ children }) {
     loading,
     isConfigured: isSupabaseConfigured,
     signIn,
+    signInWithGoogle,
     signUp,
     signOut,
     logout: signOut,
     resetPassword,
     refreshProfile,
-  }), [session, profile, loading, signIn, signUp, signOut, resetPassword, refreshProfile]);
+  }), [session, profile, loading, signIn, signInWithGoogle, signUp, signOut, resetPassword, refreshProfile]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

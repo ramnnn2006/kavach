@@ -504,3 +504,7 @@ button.settings-row:hover { background: var(--fill); }
 /* System toasts (app update) sit at the top so they never cover action toasts or the tab bar */
 .toasts--top { top: calc(env(safe-area-inset-top) + var(--s-3)); bottom: auto; }
 @media (min-width: 768px) { .toasts--top { top: var(--s-4); bottom: auto; } }
+
+/* ── Sign-in divider ──────────────────────────────── */
+.auth-or { display: flex; align-items: center; gap: var(--s-2); color: var(--text-muted); font-size: var(--fs-footnote); }
+.auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
