@@ -1,119 +1,170 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { BellOff, CircleCheck, MapPin, Users, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/DialogContext';
 import { listenIncidents, claimIncident, updateIncidentStatus } from '../firebase/firestore';
+import { getType, NEXT_STATUS } from '../config/society';
 import BottomNav from '../components/BottomNav';
-import ConfirmDialog from '../components/ConfirmDialog';
+import { PageHeader, Card, Button, TypeIcon, StatusBadge, Badge, EmptyState } from '../components/ui';
+import { toMillis, timeAgo } from '../utils/time';
 
-const typeIcons = { lift: 'elevator', power: 'bolt', medical: 'medical_services', fire: 'local_fire_department' };
-const typeColors = { lift: 'var(--sos-red)', power: 'var(--sos-amber)', medical: 'var(--primary)', fire: 'var(--sos-orange)' };
+function urgencyTone(score) {
+  if (score >= 75) return 'var(--red)';
+  if (score >= 50) return 'var(--orange)';
+  return 'var(--gray)';
+}
+
+function isClaimConflict(err) {
+  const text = typeof err === 'string' ? err : err?.message || '';
+  return text.toLowerCase().includes('already claimed');
+}
 
 export default function ResponderAlerts() {
   const { user, userProfile } = useAuth();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [searchParams] = useSearchParams();
-  const view = searchParams.get('view') || 'alerts';
+  const view = searchParams.get('view') === 'active' ? 'active' : 'alerts';
   const [incidents, setIncidents] = useState([]);
-  const [dialog, setDialog] = useState(null);
+  const [busy, setBusy] = useState({});
+  const [now, setNow] = useState(() => Date.now());
 
+  useEffect(() => listenIncidents(setIncidents), []);
+
+  // Keep "x min ago" labels fresh
   useEffect(() => {
-    return listenIncidents(setIncidents);
+    const id = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(id);
   }, []);
 
-  const openAlerts = incidents.filter(i => i.status === 'pending');
-  const activeAlerts = incidents.filter(i => i.status !== 'pending' && i.status !== 'resolved' && i.assignedResponder === user?.uid);
-
-  const handleClaim = (inc) => {
-    setDialog({
-      title: 'Claim Incident',
-      message: `You are taking responsibility for the ${inc.type} at ${inc.locationZone}. Proceed?`,
-      onConfirm: async () => {
-        try {
-          await claimIncident(inc.id, user.uid, userProfile?.name || 'Responder');
-        } catch {
-          showToast('Someone else already claimed this incident.', 'error');
-        }
-        setDialog(null);
-      },
-      onCancel: () => setDialog(null)
+  const openAlerts = incidents
+    .filter(i => i.status === 'pending')
+    .sort((a, b) => {
+      const byScore = (b.urgencyScore ?? 0) - (a.urgencyScore ?? 0);
+      if (byScore !== 0) return byScore;
+      return (toMillis(a.createdAt) ?? Infinity) - (toMillis(b.createdAt) ?? Infinity);
     });
-  };
 
-  const handleStatusUpdate = async (incId, newStatus) => {
-    if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+  const activeAlerts = incidents.filter(
+    i => i.assignedResponder === user?.uid && i.status !== 'resolved' && i.status !== 'cancelled'
+  );
+
+  const setCardBusy = (id, value) => setBusy(prev => ({ ...prev, [id]: value }));
+
+  const handleClaim = async (inc) => {
+    const t = getType(inc.type);
+    const where = inc.locationZone || 'unknown location';
+    const ok = await confirm(
+      'Claim this alert?',
+      `${t.label} at ${where}. You will be responsible for responding.`,
+      { confirmLabel: 'Claim' }
+    );
+    if (!ok) return;
+    setCardBusy(inc.id, true);
     try {
-      await updateIncidentStatus(incId, newStatus);
-    } catch {
-      showToast('Could not update status. Check your connection.', 'error');
+      await claimIncident(inc.id, user.uid, userProfile?.name);
+      showToast('Claimed — it\'s in Active now', 'success');
+    } catch (err) {
+      showToast(
+        isClaimConflict(err) ? 'Someone else already claimed this alert' : 'Couldn\'t claim. Check your connection.',
+        'error'
+      );
+    } finally {
+      setCardBusy(inc.id, false);
     }
   };
 
+  const handleNext = async (inc) => {
+    const next = NEXT_STATUS[inc.status];
+    if (!next) return;
+    if (next.status === 'resolved') {
+      const ok = await confirm(
+        'Mark as resolved?',
+        `${getType(inc.type).label} at ${inc.locationZone || 'unknown location'} will be closed.`,
+        { confirmLabel: 'Resolve' }
+      );
+      if (!ok) return;
+    }
+    setCardBusy(inc.id, true);
+    try {
+      await updateIncidentStatus(inc.id, next.status);
+    } catch {
+      showToast('Couldn\'t update status. Check your connection.', 'error');
+    } finally {
+      setCardBusy(inc.id, false);
+    }
+  };
+
+  const list = view === 'alerts' ? openAlerts : activeAlerts;
+
   return (
-    <div className="page" style={{ padding: '24px 20px', paddingTop: 'calc(env(safe-area-inset-top) + 24px)' }}>
-      <div className="page-header" style={{ marginBottom: '24px' }}>
-        <div>
-          <p style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>Responder View</p>
-          <h1 style={{ fontSize: '32px', fontWeight: 800, margin: 0, letterSpacing: '-0.5px' }}>{view === 'alerts' ? 'Incoming Alerts' : 'Active Tasks'}</h1>
+    <div className="page">
+      <PageHeader eyebrow="Responder" title={view === 'alerts' ? 'Alerts' : 'Active'} />
+
+      {list.length === 0 ? (
+        view === 'alerts' ? (
+          <EmptyState icon={BellOff} title="No open alerts" text="New emergencies will appear here." />
+        ) : (
+          <EmptyState icon={CircleCheck} title="Nothing in progress" text="Alerts you claim will show up here." />
+        )
+      ) : (
+        <div className="list">
+          {list.map(inc => {
+            const t = getType(inc.type);
+            const next = NEXT_STATUS[inc.status];
+            const description = inc.description?.trim();
+            const score = inc.urgencyScore ?? 0;
+            return (
+              <Card key={inc.id} accent tone={t.tone} as="article" className="stack-sm">
+                <div className="list-row">
+                  <TypeIcon type={inc.type} />
+                  <div className="list-row__body">
+                    <p className="list-row__title">{t.label}</p>
+                    <p className="list-row__meta row">
+                      <MapPin size={14} aria-hidden="true" />
+                      <span className="truncate">{inc.locationZone || 'Location not given'}</span>
+                    </p>
+                  </div>
+                  <StatusBadge status={inc.status} staff />
+                </div>
+
+                <div className="row wrap text-sm muted">
+                  <span className="row" style={{ gap: 'var(--s-1)' }}>
+                    <Users size={14} aria-hidden="true" />
+                    {inc.peopleAffected ?? 1} {(inc.peopleAffected ?? 1) === 1 ? 'person' : 'people'}
+                  </span>
+                  <span className="row" style={{ gap: 'var(--s-1)' }}>
+                    <Clock size={14} aria-hidden="true" />
+                    {timeAgo(inc.createdAt, now)}
+                  </span>
+                  <Badge tone={urgencyTone(score)}>Urgency {score}</Badge>
+                </div>
+
+                {description && <p className="text-sm">{description}</p>}
+
+                {view === 'alerts' ? (
+                  <Button block loading={busy[inc.id]} onClick={() => handleClaim(inc)}>
+                    Claim
+                  </Button>
+                ) : next ? (
+                  <Button
+                    block
+                    variant={next.status === 'resolved' ? 'success' : 'primary'}
+                    loading={busy[inc.id]}
+                    onClick={() => handleNext(inc)}
+                  >
+                    {next.label}
+                  </Button>
+                ) : null}
+              </Card>
+            );
+          })}
         </div>
-      </div>
+      )}
 
-      <div style={{ display: 'flex', gap: '16px', flexDirection: 'column', marginBottom: '80px' }}>
-        {(view === 'alerts' ? openAlerts : activeAlerts).length === 0 && (
-          <div className="glass-card" style={{ padding: '40px 20px', textAlign: 'center', background: 'var(--card-bg)' }}>
-            <span className="material-symbols-outlined notranslate" style={{ fontSize: '48px', color: 'var(--text-muted)', marginBottom: '16px' }}>check_circle</span>
-            <p style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 8px 0' }}>All Clear</p>
-            <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: 0 }}>No {view === 'alerts' ? 'incoming emergencies' : 'active tasks'} at the moment.</p>
-          </div>
-        )}
-
-        {(view === 'alerts' ? openAlerts : activeAlerts).map(inc => (
-          <div key={inc.id} className="glass-card" style={{ padding: '20px', borderLeft: `6px solid ${typeColors[inc.type]}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-              <div>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: typeColors[inc.type], textTransform: 'uppercase', letterSpacing: '1px' }}>{inc.type}</span>
-                <p style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0 0' }}>{inc.locationBuilding}</p>
-                <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>{inc.locationZone} • {inc.locationFloor}</p>
-              </div>
-              <div style={{ background: `${typeColors[inc.type]}15`, padding: '12px', borderRadius: '16px' }}>
-                <span className="material-symbols-outlined notranslate" style={{ color: typeColors[inc.type], fontSize: '28px' }}>{typeIcons[inc.type]}</span>
-              </div>
-            </div>
-            
-            <p style={{ fontSize: '14px', margin: '0 0 20px 0', lineHeight: 1.5 }}>"{inc.description}"</p>
-
-            {view === 'alerts' ? (
-              <button style={{ width: '100%', background: 'var(--text-main)', color: 'var(--bg)', borderRadius: '14px', padding: '16px', fontSize: '16px', fontWeight: 700 }} onClick={() => handleClaim(inc)}>
-                Accept Task
-              </button>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <button 
-                  style={{ background: inc.status === 'en_route' ? 'var(--primary)' : 'var(--card-border)', color: inc.status === 'en_route' ? '#fff' : 'var(--text-main)' }} 
-                  onClick={() => handleStatusUpdate(inc.id, 'en_route')}
-                >
-                  En Route
-                </button>
-                <button 
-                  style={{ background: inc.status === 'on_scene' ? 'var(--sos-amber)' : 'var(--card-border)', color: inc.status === 'on_scene' ? '#fff' : 'var(--text-main)' }} 
-                  onClick={() => handleStatusUpdate(inc.id, 'on_scene')}
-                >
-                  On Scene
-                </button>
-                <button 
-                  style={{ gridColumn: 'span 2', background: 'var(--success)', color: '#fff', marginTop: '8px' }} 
-                  onClick={() => handleStatusUpdate(inc.id, 'resolved')}
-                >
-                  Mark Resolved
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {dialog && <ConfirmDialog {...dialog} />}
-      <BottomNav role="responder" active={view === 'alerts' ? 'alerts' : 'active'} />
+      <BottomNav role="responder" active={view} />
     </div>
   );
 }

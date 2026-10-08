@@ -1,90 +1,82 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ClipboardList } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { listenMyIncidents } from '../firebase/firestore';
+import { getType } from '../config/society';
+import { PageHeader, Card, TypeIcon, StatusBadge, EmptyState, Button, Spinner } from '../components/ui';
 import BottomNav from '../components/BottomNav';
-
-const typeIcons = { lift: 'elevator', power: 'bolt', medical: 'medical_services', fire: 'local_fire_department' };
-const typeColors = { lift: '#EF4444', power: '#F59E0B', medical: '#3B82F6', fire: '#F97316' };
-const typeBgs = { lift: '#FEF2F2', power: '#FFFBEB', medical: '#EFF6FF', fire: '#FFF7ED' };
-const statusBadge = { pending: 'badge-amber', acknowledged: 'badge-blue', in_progress: 'badge-blue', resolved: 'badge-green' };
+import { toMillis, timeAgo } from '../utils/time';
 
 export default function MyReports() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [incidents, setIncidents] = useState([]);
+  const [loadedUid, setLoadedUid] = useState(null);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    if (!user) return;
-    return listenMyIncidents(user.uid, setIncidents);
-  }, [user]);
+    if (!user?.uid) return;
+    const uid = user.uid;
+    return listenMyIncidents(uid, (list) => {
+      setIncidents(list || []);
+      setLoadedUid(uid);
+    });
+  }, [user?.uid]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60000);
     return () => clearInterval(timer);
   }, []);
 
-  function timeAgo(ts) {
-    if (!ts) return '';
-    let date;
-    if (ts.toDate && typeof ts.toDate === 'function') {
-      date = ts.toDate();
-    } else if (ts instanceof Date) {
-      date = ts;
-    } else if (typeof ts === 'number') {
-      date = new Date(ts);
-    } else if (ts.seconds) {
-      // Firestore Timestamp object from JSON
-      date = new Date(ts.seconds * 1000);
-    } else {
-      date = new Date(ts);
-    }
-    const mins = Math.floor((now - date.getTime()) / 60000);
-    if (mins < 1) return 'just now';
-    if (mins < 60) return `${mins}m ago`;
-    if (mins < 1440) return `${Math.floor(mins / 60)}h ago`;
-    return `${Math.floor(mins / 1440)}d ago`;
-  }
+  const loaded = !!user?.uid && loadedUid === user.uid;
 
-  const hasData = incidents.length > 0;
+  // Newest first; pending server timestamps (null) count as newest
+  const sorted = incidents
+    .map(inc => ({ inc, ms: toMillis(inc.createdAt) }))
+    .sort((a, b) => (b.ms ?? Infinity) - (a.ms ?? Infinity));
 
   return (
-    <div className="page fade-up">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-        <button onClick={() => navigate('/student')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
-          <span className="material-symbols-outlined notranslate notranslate">arrow_back</span>
-        </button>
-        <h1 className="page-title">My Reports</h1>
-      </div>
+    <div className="page fade-in">
+      <PageHeader title="Reports" />
 
-      {!hasData && (
-        <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-          <span className="material-symbols-outlined notranslate notranslate" style={{ fontSize: '3rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'block' }}>description</span>
-          <p style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.5rem' }}>No Reports Yet</p>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Your submitted incidents will appear here</p>
-          <button className="btn btn-primary" style={{ marginTop: '1.5rem', maxWidth: '16rem', margin: '1.5rem auto 0' }} onClick={() => navigate('/student')}>
-            <span className="material-symbols-outlined notranslate notranslate" style={{ fontSize: '1.125rem' }}>add</span>
-            Report Emergency
-          </button>
+      {!loaded ? (
+        <div className="row" style={{ justifyContent: 'center', padding: 'var(--s-5) 0' }}>
+          <Spinner large label="Loading reports" />
         </div>
+      ) : sorted.length === 0 ? (
+        <EmptyState
+          icon={ClipboardList}
+          title="No reports yet"
+          text="Alerts you send will appear here so you can follow their progress."
+          action={<Button onClick={() => navigate('/student')}>Report an emergency</Button>}
+        />
+      ) : (
+        <ul className="list" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {sorted.map(({ inc, ms }) => {
+            const t = getType(inc.type);
+            const meta = [inc.locationZone, timeAgo(ms, now)].filter(Boolean).join(' · ');
+            return (
+              <li key={inc.id}>
+                <Card
+                  as="button"
+                  type="button"
+                  interactive
+                  className="list-row"
+                  onClick={() => navigate(`/student/tracker/${inc.id}`)}
+                >
+                  <TypeIcon type={inc.type} />
+                  <div className="list-row__body">
+                    <p className="list-row__title truncate">{t.label}</p>
+                    <p className="list-row__meta truncate">{meta}</p>
+                  </div>
+                  <StatusBadge status={inc.status} />
+                </Card>
+              </li>
+            );
+          })}
+        </ul>
       )}
-
-      {incidents.map((inc, i) => (
-        <div key={inc.id} className="incident-card fade-up" style={{ animationDelay: `${i * 0.1}s`, cursor: 'pointer' }} onClick={() => navigate(`/student/tracker/${inc.id}`)}>
-          <div className="incident-icon" style={{ background: typeBgs[inc.type] }}>
-            <span className="material-symbols-outlined notranslate notranslate" style={{ color: typeColors[inc.type] }}>{typeIcons[inc.type]}</span>
-          </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontWeight: 700, fontSize: '0.875rem', textTransform: 'capitalize' }}>{inc.type?.replace('_', ' ')} Emergency</p>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{inc.locationZone}</p>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <span className={`badge ${statusBadge[inc.status] || 'badge-gray'}`}>{inc.status}</span>
-            <p style={{ fontSize: '0.625rem', color: '#94A3B8', marginTop: '0.5rem', fontWeight: 600 }}>{timeAgo(inc.createdAt)}</p>
-          </div>
-        </div>
-      ))}
 
       <BottomNav role="student" active="reports" />
     </div>

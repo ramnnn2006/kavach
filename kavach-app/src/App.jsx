@@ -1,10 +1,12 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { DialogProvider } from './context/DialogContext';
 import ToastContainer from './components/ToastContainer';
 import ConnectionBanner from './components/ConnectionBanner';
+import ErrorBoundary from './components/ErrorBoundary';
+import { Spinner } from './components/ui';
+import { roleHome } from './config/society';
 
 import Login from './screens/Login';
 import StudentHome from './screens/StudentHome';
@@ -30,10 +32,8 @@ function ProtectedRoute({ children, allowedRole }) {
 
   if (loading) {
     return (
-      <div className="page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span className="material-symbols-outlined notranslate" style={{ fontSize: '3rem', animation: 'pulse 2s infinite', color: 'var(--primary)' }}>
-          shield
-        </span>
+      <div className="page page--center" style={{ alignItems: 'center' }}>
+        <Spinner large />
       </div>
     );
   }
@@ -41,7 +41,7 @@ function ProtectedRoute({ children, allowedRole }) {
   if (!user) return <Navigate to="/login" replace />;
 
   if (allowedRole && userProfile?.role?.toLowerCase() !== allowedRole.toLowerCase()) {
-    return <Navigate to={`/${userProfile?.role?.toLowerCase() || 'student'}`} replace />;
+    return <Navigate to={roleHome(userProfile?.role)} replace />;
   }
 
   return children;
@@ -53,11 +53,12 @@ function ProtectedRoute({ children, allowedRole }) {
  */
 function AppRoutes() {
   const { user, userProfile } = useAuth();
-  const defaultRoute = userProfile?.role ? `/${userProfile.role.toLowerCase()}` : '/student';
+  const defaultRoute = roleHome(userProfile?.role);
 
   return (
-    <div className="app-container" style={{ width: '100%', minHeight: '100dvh', position: 'relative', background: 'var(--bg)' }}>
+    <>
       <ConnectionBanner />
+      <ErrorBoundary>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={user ? <Navigate to={defaultRoute} replace /> : <Login />} />
@@ -81,7 +82,8 @@ function AppRoutes() {
         {/* Fallback */}
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </div>
+      </ErrorBoundary>
+    </>
   );
 }
 

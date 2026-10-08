@@ -1,23 +1,26 @@
 import { useState, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Minus, Plus, CircleAlert } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { createIncident, calculateUrgency } from '../firebase/firestore';
-
-const typeInfo = {
-  lift: { label: 'Lift Stuck', icon: 'elevator', color: '#EF4444', bg: '#FEF2F2' },
-  power: { label: 'Power Outage', icon: 'bolt', color: '#F59E0B', bg: '#FFFBEB' },
-  medical: { label: 'Medical Emergency', icon: 'medical_services', color: '#3B82F6', bg: '#EFF6FF' },
-  fire: { label: 'Fire Emergency', icon: 'local_fire_department', color: '#F97316', bg: '#FFF7ED' },
-};
+import { INCIDENT_TYPES, getType } from '../config/society';
+import { PageHeader, TypeIcon, Field, IconButton, Button, AlertBanner } from '../components/ui';
 
 const buildings = ['Block A', 'Block B', 'Block C', 'Main Building', 'Hostel 1', 'Hostel 2'];
-const floors = ['Ground', '1st', '2nd', '3rd', '4th', '5th'];
+
+const ordinal = (n) => {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+};
+const floors = ['Ground', ...Array.from({ length: 20 }, (_, i) => ordinal(i + 1))];
+
+const MAX_PEOPLE = 50;
 
 export default function ReportForm() {
   const { type } = useParams();
   const navigate = useNavigate();
   const { user, userProfile } = useAuth();
-  const info = typeInfo[type] || typeInfo.lift;
 
   const [building, setBuilding] = useState('');
   const [floor, setFloor] = useState('');
@@ -26,8 +29,14 @@ export default function ReportForm() {
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  
+
   const lastSubmit = useRef(0);
+
+  if (!Object.hasOwn(INCIDENT_TYPES, type)) {
+    return <Navigate to="/student" replace />;
+  }
+
+  const info = getType(type);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,79 +46,129 @@ export default function ReportForm() {
 
     setSubmitting(true);
     setError('');
-    
+
     try {
       const urgencyScore = calculateUrgency(type, people);
+      const floorLabel = floor === 'Ground' ? 'Ground Floor' : `${floor} Floor`;
       const result = await createIncident({
         type,
         locationBuilding: building,
         locationFloor: floor,
-        locationZone: `${building}, ${floor} Floor${zone ? `, ${zone}` : ''}`,
+        locationZone: `${building}, ${floorLabel}${zone.trim() ? `, ${zone.trim()}` : ''}`,
         reporterUid: user?.uid || 'demo-student',
         reporterName: userProfile?.name || 'Demo Student',
-        description,
+        description: description.trim(),
         peopleAffected: people,
         urgencyScore,
       });
-      // Navigate to tracker with the real incident ID
-      navigate(`/student/tracker/${result.id}`);
+      navigate(`/student/tracker/${result.id}`, { replace: true });
     } catch (err) {
       console.error('Error creating incident:', err);
-      setError(err.message || 'Failed to submit report. Please try again.');
-      setSubmitting(false); // Re-enable on failure
+      setError(err.message || 'Could not send the alert. Please try again.');
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="page fade-up">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-        <button onClick={() => navigate(-1)} disabled={submitting} style={{ background: 'none', border: 'none', cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', opacity: submitting ? 0.5 : 1 }}>
-          <span className="material-symbols-outlined notranslate">arrow_back</span>
-        </button>
-        <h1 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Report Emergency</h1>
-      </div>
+    <div className="page fade-in">
+      <PageHeader compact back title={info.label} action={<TypeIcon type={type} size="sm" />} />
 
-      <div className="badge" style={{ background: info.bg, color: info.color, marginBottom: '1.5rem', padding: '0.5rem 1rem', fontSize: '0.75rem' }}>
-        <span className="material-symbols-outlined notranslate" style={{ fontSize: '1rem' }}>{info.icon}</span>
-        {info.label}
-      </div>
+      <form onSubmit={handleSubmit} className="stack">
+        <Field label="Building" htmlFor="rf-building">
+          <select
+            id="rf-building"
+            className="select"
+            value={building}
+            onChange={e => setBuilding(e.target.value)}
+            required
+            disabled={submitting}
+          >
+            <option value="">Select building</option>
+            {buildings.map(b => <option key={b} value={b}>{b}</option>)}
+          </select>
+        </Field>
 
-      <form onSubmit={handleSubmit}>
-        <label className="section-label">Location</label>
-        <select className="input-field" value={building} onChange={e => setBuilding(e.target.value)} required disabled={submitting} style={{ marginBottom: '0.75rem', paddingLeft: '1rem' }}>
-          <option value="">Select Building</option>
-          {buildings.map(b => <option key={b} value={b}>{b}</option>)}
-        </select>
-        <select className="input-field" value={floor} onChange={e => setFloor(e.target.value)} required disabled={submitting} style={{ marginBottom: '0.75rem', paddingLeft: '1rem' }}>
-          <option value="">Select Floor</option>
-          {floors.map(f => <option key={f} value={f}>{f}</option>)}
-        </select>
-        <input className="input-field" type="text" placeholder="Zone / Room (e.g., Near Lift 2)" value={zone} onChange={e => setZone(e.target.value)} disabled={submitting} style={{ marginBottom: '1.5rem', paddingLeft: '1rem' }} />
+        <Field label="Floor" htmlFor="rf-floor">
+          <select
+            id="rf-floor"
+            className="select"
+            value={floor}
+            onChange={e => setFloor(e.target.value)}
+            required
+            disabled={submitting}
+          >
+            <option value="">Select floor</option>
+            {floors.map(f => <option key={f} value={f}>{f}</option>)}
+          </select>
+        </Field>
 
-        <label className="section-label">People Affected</label>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', opacity: submitting ? 0.5 : 1 }}>
-          <button type="button" onClick={() => setPeople(Math.max(1, people - 1))} disabled={submitting} style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.5rem', border: '1px solid var(--border)', background: 'white', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: '1.25rem', fontWeight: 700 }}>−</button>
-          <span style={{ fontSize: '1.5rem', fontWeight: 700, minWidth: '2rem', textAlign: 'center' }}>{people}</span>
-          <button type="button" onClick={() => setPeople(Math.min(50, people + 1))} disabled={submitting} style={{ width: '2.5rem', height: '2.5rem', borderRadius: '0.5rem', border: '1px solid var(--border)', background: 'white', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: '1.25rem', fontWeight: 700 }}>+</button>
+        <Field label="Area or landmark (optional)" htmlFor="rf-zone" hint="For example: near Lift 2">
+          <input
+            id="rf-zone"
+            className="input"
+            type="text"
+            value={zone}
+            onChange={e => setZone(e.target.value)}
+            disabled={submitting}
+            autoComplete="off"
+          />
+        </Field>
+
+        <div className="field">
+          <p className="field__label" id="rf-people-label">People affected</p>
+          <div className="counter" role="group" aria-labelledby="rf-people-label">
+            <IconButton
+              type="button"
+              label="Fewer people"
+              onClick={() => setPeople(p => Math.max(1, p - 1))}
+              disabled={submitting || people <= 1}
+            >
+              <Minus size={20} aria-hidden="true" />
+            </IconButton>
+            <span className="counter__value" aria-live="polite">
+              {people >= MAX_PEOPLE ? `${MAX_PEOPLE}+` : people}
+            </span>
+            <IconButton
+              type="button"
+              label="More people"
+              onClick={() => setPeople(p => Math.min(MAX_PEOPLE, p + 1))}
+              disabled={submitting || people >= MAX_PEOPLE}
+            >
+              <Plus size={20} aria-hidden="true" />
+            </IconButton>
+          </div>
         </div>
 
-        <label className="section-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Description (optional)</span>
-          <span style={{ fontWeight: 'normal', color: description.length > 500 ? 'var(--sos-red)' : 'var(--text-muted)' }}>{description.length}/500</span>
-        </label>
-        <textarea className="input-field" placeholder="Briefly describe the situation" value={description} onChange={e => setDescription(e.target.value.slice(0, 500))} disabled={submitting} rows={3} style={{ resize: 'none', marginBottom: '2rem', paddingLeft: '1rem' }} />
+        <Field label="Details (optional)" htmlFor="rf-details" hint={`${description.length}/500`}>
+          <textarea
+            id="rf-details"
+            className="textarea"
+            placeholder="Briefly describe the situation"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            maxLength={500}
+            disabled={submitting}
+            rows={3}
+          />
+        </Field>
 
         {error && (
-          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '0.75rem', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span className="material-symbols-outlined notranslate" style={{ fontSize: '1.125rem', color: '#DC2626' }}>error</span>
-            <p style={{ color: '#DC2626', fontSize: '0.75rem', fontWeight: 500 }}>{error}</p>
-          </div>
+          <AlertBanner tone="var(--red)" icon={CircleAlert} role="alert">
+            {error}
+          </AlertBanner>
         )}
 
-        <button type="submit" className={`btn btn-danger ${submitting ? 'loading' : ''}`} disabled={submitting || !building || !floor}>
-          {!submitting && <span className="material-symbols-outlined notranslate" style={{ fontSize: '1.25rem' }}>emergency_share</span>}
-          {submitting ? 'Sending...' : '🚨 Send SOS'}
-        </button>
+        <Button
+          type="submit"
+          variant="danger"
+          size="lg"
+          block
+          loading={submitting}
+          aria-label={submitting ? 'Sending alert' : undefined}
+          disabled={!building || !floor}
+        >
+          Send alert
+        </Button>
       </form>
     </div>
   );

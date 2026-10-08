@@ -1,152 +1,169 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { CircleSlash, TriangleAlert, SearchX, UserRoundSearch, MapPin, Users } from 'lucide-react';
 import { listenIncident } from '../firebase/firestore';
+import { getType, getStatus } from '../config/society';
+import {
+  PageHeader, Card, TypeIcon, StatusBadge, Stepper, Spinner, EmptyState, Button, AlertBanner, Avatar,
+} from '../components/ui';
+import { toMillis } from '../utils/time';
 
-const typeIcons = { lift: 'elevator', power: 'bolt', medical: 'medical_services', fire: 'local_fire_department' };
+function clock(ms) {
+  if (ms == null) return undefined;
+  return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatElapsed(totalSeconds) {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  const mm = String(m).padStart(2, '0');
+  const ss = String(s).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+const STEP_LABELS = ['Sent', 'Accepted', 'On the way', 'Help arrived', 'Resolved'];
 
 export default function IncidentTracker() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [incident, setIncident] = useState(null);
-  const [elapsed, setElapsed] = useState(0);
-  const [escalation, setEscalation] = useState(1);
+  const [loadedId, setLoadedId] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
 
   // Subscribe to just this incident (reporters can't read the whole collection)
   useEffect(() => {
     return listenIncident(id, (found) => {
       setIncident(found);
-      if (found) setEscalation(found.escalationLevel || 1);
+      setLoadedId(id);
     });
   }, [id]);
 
-  // Timer based on real created at
+  const loaded = loadedId === id;
+  const status = incident?.status || 'pending';
+  const finished = status === 'resolved' || status === 'cancelled';
+
+  // Tick the elapsed clock only while the report is still open
   useEffect(() => {
-    if (!incident?.createdAt) return;
-    let startTime = Date.now();
-    const ts = incident.createdAt;
-    if (ts) {
-      if (ts.toMillis && typeof ts.toMillis === 'function') startTime = ts.toMillis();
-      else if (ts instanceof Date) startTime = ts.getTime();
-      else if (ts.seconds) startTime = ts.seconds * 1000;
-      else if (typeof ts === 'number') startTime = ts;
-      else startTime = new Date(ts).getTime();
-    }
-    
-    const updateTime = () => {
-      setElapsed(Math.max(0, Math.floor((Date.now() - startTime) / 1000)));
-    };
-    updateTime();
-    const timer = setInterval(updateTime, 1000);
+    if (!loaded || !incident || finished) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [incident]);
+  }, [loaded, incident, finished]);
 
-  const formatTime = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  if (!loaded) {
+    return (
+      <div className="page page--center" style={{ alignItems: 'center' }}>
+        <Spinner large label="Loading report" />
+      </div>
+    );
+  }
 
-  const currentEscalation = Math.max(
-    escalation,
-    elapsed >= 180 ? 4 : elapsed >= 120 ? 3 : elapsed >= 60 ? 2 : 1
-  );
+  if (!incident) {
+    return (
+      <div className="page fade-in">
+        <PageHeader compact back="/student/reports" title="Your report" />
+        <EmptyState
+          icon={SearchX}
+          title="Report not found"
+          text="It may have been removed, or the link is wrong."
+          action={<Button onClick={() => navigate('/student/reports')}>View my reports</Button>}
+        />
+      </div>
+    );
+  }
 
-  // Use real incident data or defaults
-  const incType = incident?.type || 'lift';
-  const incLocation = incident?.locationZone || 'Loading...';
-  const incUrgency = incident?.urgencyScore || 0;
-  const incPeople = incident?.peopleAffected || 0;
-  const incStatus = incident?.status || 'pending';
+  const type = getType(incident.type);
+  const step = getStatus(status).step;
+  const createdMs = toMillis(incident.createdAt);
+  const ackMs = toMillis(incident.acknowledgedAt);
+  const resolvedMs = toMillis(incident.resolvedAt);
 
-  const steps = [
-    { label: 'Submitted', status: 'completed' },
-    { label: 'Acknowledged', status: incStatus === 'acknowledged' || incStatus === 'in_progress' || incStatus === 'resolved' || currentEscalation >= 2 ? 'completed' : 'active' },
-    { label: 'En Route', status: incStatus === 'in_progress' || incStatus === 'resolved' || currentEscalation >= 3 ? 'active' : 'pending' },
-    { label: 'On Scene', status: incStatus === 'resolved' ? 'completed' : 'pending' },
-    { label: 'Resolved', status: incStatus === 'resolved' ? 'completed' : 'pending' },
-  ];
+  const endMs = status === 'resolved' ? (resolvedMs ?? now) : now;
+  const elapsed = createdMs == null ? 0 : Math.max(0, Math.floor((endMs - createdMs) / 1000));
 
-  const escalationText = ['', 'Technician notified', '⚠️ Supervisor Notified', '⚠️ Admin Alerted', '🚨 CRITICAL — All Admins'];
+  const stepTimes = [clock(createdMs), clock(ackMs), undefined, undefined, clock(resolvedMs)];
+  const steps = STEP_LABELS.map((label, i) => ({
+    label,
+    state: i <= step ? 'done' : i === step + 1 ? 'current' : 'todo',
+    time: i <= step ? stepTimes[i] : undefined,
+  }));
+
+  const people = incident.peopleAffected;
+  const escalationLevel = Number(incident.escalationLevel) || 1;
 
   return (
-    <div className="page fade-up">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-        <button onClick={() => navigate('/student')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
-          <span className="material-symbols-outlined notranslate notranslate">arrow_back</span>
-        </button>
-        <h1 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Incident Tracker</h1>
-        {incStatus !== 'resolved' && (
-          <span style={{ width: '0.5rem', height: '0.5rem', borderRadius: '50%', background: 'var(--sos-red)', marginLeft: 'auto', animation: 'pulse 2s infinite' }} />
+    <div className="page fade-in">
+      <PageHeader compact back title="Your report" action={<StatusBadge status={status} />} />
+
+      <div className="stack">
+        <Card className="stack-sm">
+          <div className="list-row">
+            <TypeIcon type={incident.type} />
+            <div className="list-row__body">
+              <p className="list-row__title">{type.label}</p>
+              {incident.locationZone && (
+                <p className="list-row__meta row">
+                  <MapPin size={14} aria-hidden="true" />
+                  <span className="truncate">{incident.locationZone}</span>
+                </p>
+              )}
+              {people != null && (
+                <p className="list-row__meta row">
+                  <Users size={14} aria-hidden="true" />
+                  <span>{people >= 50 ? '50+' : people} {people === 1 ? 'person' : 'people'} affected</span>
+                </p>
+              )}
+            </div>
+            {status !== 'cancelled' && (
+              <div style={{ textAlign: 'right' }}>
+                <p className="mono text-lg bold">{formatElapsed(elapsed)}</p>
+                <p className="text-xs muted">{status === 'resolved' ? 'Total time' : 'Elapsed'}</p>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {escalationLevel > 1 && (
+          <AlertBanner tone="var(--orange)" icon={TriangleAlert}>
+            Escalated (level {escalationLevel})
+          </AlertBanner>
+        )}
+
+        {status === 'cancelled' ? (
+          <AlertBanner tone="var(--gray)" icon={CircleSlash}>
+            This report was cancelled.
+          </AlertBanner>
+        ) : (
+          <section aria-labelledby="progress-heading">
+            <h2 id="progress-heading" className="section-title">Progress</h2>
+            <Card>
+              <Stepper steps={steps} />
+            </Card>
+          </section>
+        )}
+
+        {status !== 'cancelled' && (
+          <Card className="list-row">
+            {incident.assignedResponderName ? (
+              <>
+                <Avatar name={incident.assignedResponderName} />
+                <div className="list-row__body">
+                  <p className="list-row__title">{incident.assignedResponderName}</p>
+                  <p className="list-row__meta">Assigned responder</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <UserRoundSearch size={22} className="muted" aria-hidden="true" />
+                <div className="list-row__body">
+                  <p className="list-row__title">Waiting for a responder to accept</p>
+                  <p className="list-row__meta">You'll see their name here once they do.</p>
+                </div>
+              </>
+            )}
+          </Card>
         )}
       </div>
-
-      <div className="stepper">
-        {steps.map((s, i) => (
-          <div key={s.label} style={{ display: 'contents' }}>
-            <div className="step">
-              <div className={`step-dot ${s.status}`}>
-                {s.status === 'completed' ? '✓' : i + 1}
-              </div>
-              <span className="step-label">{s.label}</span>
-            </div>
-            {i < steps.length - 1 && <div className={`step-line ${s.status === 'completed' ? 'completed' : ''}`} />}
-          </div>
-        ))}
-      </div>
-
-      <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-          <div>
-            <div className="badge badge-red" style={{ marginBottom: '0.5rem' }}>
-              <span className="material-symbols-outlined notranslate notranslate" style={{ fontSize: '0.875rem' }}>{typeIcons[incType] || 'warning'}</span>
-              {incType.charAt(0).toUpperCase() + incType.slice(1)}
-            </div>
-            <p style={{ fontSize: '0.875rem', fontWeight: 600 }}>{incLocation}</p>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'monospace' }}>{formatTime(elapsed)}</p>
-            <p style={{ fontSize: '0.625rem', color: 'var(--text-muted)', fontWeight: 600 }}>ELAPSED</p>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <div className="badge badge-amber">Urgency: {incUrgency}/100</div>
-          <div className="badge badge-blue">{incPeople} people</div>
-          {incStatus === 'resolved' && <div className="badge badge-green">Resolved</div>}
-        </div>
-      </div>
-
-      {currentEscalation >= 2 && (
-        <div className="glass-card fade-up" style={{ padding: '1rem', marginBottom: '1rem', borderLeft: `4px solid ${currentEscalation >= 4 ? 'var(--sos-red)' : 'var(--sos-amber)'}` }}>
-          <p style={{ fontSize: '0.875rem', fontWeight: 700, color: currentEscalation >= 4 ? 'var(--sos-red)' : 'var(--sos-amber)' }}>
-            Level {currentEscalation} — {escalationText[currentEscalation]}
-          </p>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            Auto-escalated at {formatTime(currentEscalation === 2 ? 60 : currentEscalation === 3 ? 120 : 180)}
-          </p>
-        </div>
-      )}
-
-      {incident?.assignedResponderName && (
-        <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div className="avatar" style={{ width: '2.5rem', height: '2.5rem', fontSize: '0.875rem' }}>
-            {incident.assignedResponderName.split(' ').map(n => n[0]).join('')}
-          </div>
-          <div>
-            <p style={{ fontWeight: 700, fontSize: '0.875rem' }}>{incident.assignedResponderName}</p>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Assigned Responder</p>
-          </div>
-          <span className="badge badge-blue" style={{ marginLeft: 'auto' }}>Assigned</span>
-        </div>
-      )}
-
-      {!incident?.assignedResponderName && (
-        <div className="glass-card" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '50%', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span className="material-symbols-outlined notranslate notranslate" style={{ color: 'var(--text-muted)', fontSize: '1.25rem' }}>person_search</span>
-          </div>
-          <div>
-            <p style={{ fontWeight: 700, fontSize: '0.875rem' }}>Awaiting Responder</p>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>A responder will be assigned shortly</p>
-          </div>
-          <span className="badge badge-amber" style={{ marginLeft: 'auto' }}>Pending</span>
-        </div>
-      )}
     </div>
   );
 }

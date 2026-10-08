@@ -10,10 +10,24 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
+const DEMO_PROFILES = {
+  student: { name: 'Anjum Sana', email: 'student@kavach.com', role: 'student', phone: '+91 98XXXXXXXX' },
+  responder: { name: 'Rajesh Kumar', email: 'responder@kavach.com', role: 'responder', phone: '+91 87XXXXXXXX' },
+  admin: { name: 'Dr. Sharma', email: 'admin@kavach.com', role: 'admin', phone: '+91 76XXXXXXXX' },
+};
+const DEMO_KEY = 'kavach_demo_role';
+
+function readDemoRole() {
+  try { return sessionStorage.getItem(DEMO_KEY); } catch { return null; }
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [userProfile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(!isFirebaseConfigured);
+  // Demo sessions survive reloads within the tab
+  const initialDemo = !isFirebaseConfigured ? DEMO_PROFILES[readDemoRole()] : null;
+  const [user, setUser] = useState(initialDemo ? { uid: `demo-${initialDemo.role}`, email: initialDemo.email } : null);
+  const [userProfile, setProfile] = useState(initialDemo);
+  // Only Firebase needs to wait for the session to be restored
+  const [loading, setLoading] = useState(isFirebaseConfigured);
 
   useEffect(() => {
     if (!isFirebaseConfigured || !auth) return;
@@ -61,6 +75,7 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error('Error signing out:', err);
     } finally {
+      try { sessionStorage.removeItem(DEMO_KEY); } catch { /* storage unavailable */ }
       setUser(null);
       setProfile(null);
     }
@@ -82,12 +97,9 @@ export function AuthProvider({ children }) {
 
   // Demo mode - skip Firebase auth entirely
   function demoLogin(role) {
-    const demoProfiles = {
-      student: { name: 'Anjum Sana', email: 'student@kavach.com', role: 'student', phone: '+91 98XXXXXXXX' },
-      responder: { name: 'Rajesh Kumar', email: 'responder@kavach.com', role: 'responder', phone: '+91 87XXXXXXXX' },
-      admin: { name: 'Dr. Sharma', email: 'admin@kavach.com', role: 'admin', phone: '+91 76XXXXXXXX' },
-    };
-    const profile = demoProfiles[role];
+    if (isFirebaseConfigured) throw new Error('Demo mode is only available without a backend.');
+    const profile = DEMO_PROFILES[role];
+    try { sessionStorage.setItem(DEMO_KEY, role); } catch { /* storage unavailable */ }
     setUser({ uid: `demo-${role}`, email: profile.email });
     setProfile(profile);
   }

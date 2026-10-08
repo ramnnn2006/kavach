@@ -4,6 +4,7 @@ import {
   query, where, orderBy, onSnapshot, serverTimestamp,
   getDoc, getDocs, setDoc, Timestamp, runTransaction
 } from 'firebase/firestore';
+import { INCIDENT_TYPES, ACTIVE_STATUSES } from '../config/society';
 
 // ── Firestore refs ──
 const incidentsRef = collection(db, 'incidents');
@@ -75,7 +76,7 @@ export function listenIncidents(callback) {
 
 export function listenMyIncidents(uid, callback) {
   if (!isFirebaseConfigured) {
-    return addDemoListener(callback, i => i.reporterUid === uid || uid?.startsWith('demo'));
+    return addDemoListener(callback, i => i.reporterUid === uid);
   }
   const q = query(incidentsRef, where('reporterUid', '==', uid));
   return onSnapshot(q, (snap) => {
@@ -106,7 +107,7 @@ export function listenIncident(id, callback) {
 
 export function listenPendingIncidents(callback) {
   if (!isFirebaseConfigured) return addDemoListener(callback, i => i.status !== 'resolved');
-  const q = query(incidentsRef, where('status', 'in', ['pending', 'acknowledged', 'in_progress']));
+  const q = query(incidentsRef, where('status', 'in', ACTIVE_STATUSES));
   return onSnapshot(q, (snap) => {
     const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     docs.sort((a, b) => {
@@ -178,10 +179,9 @@ export async function getUserProfile(uid) {
 
 // ── Urgency Scoring ──
 // Score = hazard×0.35 + people×0.25 + zone×0.25 + age×0.15 (each component 0–100)
-const HAZARD_WEIGHTS = { fire: 100, medical: 90, lift: 75, power: 60 };
 
 export function calculateUrgency(type, peopleAffected, zoneCriticality = 3, ageMinutes = 0) {
-  const hazard = HAZARD_WEIGHTS[type] ?? 50;
+  const hazard = INCIDENT_TYPES[type]?.weight ?? 50;
   const people = Math.min(peopleAffected / 50, 1) * 100;
   const zone = Math.min(Math.max(zoneCriticality, 1), 5) * 20;
   const age = Math.min(ageMinutes * 5, 100);
@@ -206,7 +206,10 @@ export async function seedZones() {
 // ── Atomic Operations ──
 export async function claimIncident(incidentId, responderUid, responderName) {
   if (!isFirebaseConfigured) {
-    demoIncidents = demoIncidents.map(i => i.id === incidentId && i.status === 'pending' ? { ...i, status: 'acknowledged', assignedResponder: responderUid, assignedResponderName: responderName, acknowledgedAt: new Date() } : i);
+    const current = demoIncidents.find(i => i.id === incidentId);
+    if (!current) throw new Error('Document does not exist!');
+    if (current.status !== 'pending') throw new Error('Incident already claimed!');
+    demoIncidents = demoIncidents.map(i => i.id === incidentId ? { ...i, status: 'acknowledged', assignedResponder: responderUid, assignedResponderName: responderName, acknowledgedAt: new Date() } : i);
     notifyDemoListeners();
     return Promise.resolve();
   }
@@ -214,8 +217,8 @@ export async function claimIncident(incidentId, responderUid, responderName) {
   try {
     await runTransaction(db, async (transaction) => {
       const incDoc = await transaction.get(incRef);
-      if (!incDoc.exists()) throw "Document does not exist!";
-      if (incDoc.data().status !== 'pending') throw "Incident already claimed!";
+      if (!incDoc.exists()) throw new Error("Document does not exist!");
+      if (incDoc.data().status !== 'pending') throw new Error("Incident already claimed!");
       
       transaction.update(incRef, {
         status: 'acknowledged',

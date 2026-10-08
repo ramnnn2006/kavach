@@ -1,0 +1,120 @@
+/* Design tokens — Apple HIG system values (iOS dynamic system colours,
+   grouped backgrounds, label hierarchy, Dynamic Type sizes). */
+:root {
+  color-scheme: light;
+
+  /* Backgrounds (grouped set) */
+  --bg: #f2f2f7;                       /* systemGroupedBackground */
+  --surface: #ffffff;                  /* secondarySystemGroupedBackground */
+  --surface-2: #f2f2f7;                /* tertiarySystemGroupedBackground */
+  --fill: rgba(120, 120, 128, 0.12);   /* tertiarySystemFill */
+  --material: rgba(249, 249, 249, 0.8);/* bar material */
+
+  /* Labels */
+  --text: #000000;                     /* label */
+  --text-muted: rgba(60, 60, 67, 0.76);/* secondaryLabel (increased contrast, AA) */
+  --text-tertiary: rgba(60, 60, 67, 0.45);
+  --border: rgba(60, 60, 67, 0.29);    /* separator */
+
+  /* System colours */
+  --blue: #007aff;
+  --red: #ff3b30;
+  --orange: #ff9500;
+  --yellow: #ffcc00;
+  --green: #34c759;
+  --teal: #30b0c7;
+  --indigo: #5856d6;
+  --purple: #af52de;
+  --pink: #ff2d55;
+  --gray: #8e8e93;
+
+  /* Semantic roles */
+  --primary: var(--blue);
+  --danger: var(--red);
+  --warning: var(--orange);
+  --success: var(--green);
+  --on-accent: #ffffff;
+
+  /* Incident type tints */
+  --t-lift: var(--indigo);
+  --t-fire: var(--red);
+  --t-medical: var(--pink);
+  --t-water: var(--teal);
+  --t-power: var(--orange);
+  --t-security: var(--purple);
+
+  /* Dynamic Type (iOS default sizes) */
+  --fs-caption: 12px;
+  --fs-footnote: 13px;
+  --fs-subhead: 15px;
+  --fs-body: 17px;
+  --fs-title3: 20px;
+  --fs-title2: 22px;
+  --fs-title1: 28px;
+  --fs-large: 34px;
+
+  /* Aliases used by components */
+  --fs-xs: var(--fs-caption);
+  --fs-sm: var(--fs-subhead);
+  --fs-md: var(--fs-body);
+  --fs-lg: var(--fs-title3);
+  --fs-xl: var(--fs-large);
+
+  /* Radii */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 14px;
+
+  /* Spacing (8pt grid) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 16px;
+  --s-4: 24px;
+  --s-5: 40px;
+
+  --shadow: none;
+  --shadow-raised: 0 8px 30px rgba(0, 0, 0, 0.12);
+
+  /* Layout */
+  --nav-h: 56px;
+  --sidebar-w: 240px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Variable", "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Variable", "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+}
+
+html.dark {
+  color-scheme: dark;
+
+  --bg: #000000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --fill: rgba(118, 118, 128, 0.24);
+  --material: rgba(22, 22, 24, 0.8);
+
+  --text: #ffffff;
+  --text-muted: rgba(235, 235, 245, 0.7);
+  --text-tertiary: rgba(235, 235, 245, 0.35);
+  --border: rgba(84, 84, 88, 0.65);
+
+  --blue: #0a84ff;
+  --red: #ff453a;
+  --orange: #ff9f0a;
+  --yellow: #ffd60a;
+  --green: #30d158;
+  --teal: #40c8e0;
+  --indigo: #5e5ce6;
+  --purple: #bf5af2;
+  --pink: #ff375f;
+  --gray: #8e8e93;
+}
+
+html.large-text {
+  --fs-caption: 14px;
+  --fs-footnote: 15px;
+  --fs-subhead: 17px;
+  --fs-body: 19px;
+  --fs-title3: 22px;
+  --fs-title2: 24px;
+  --fs-title1: 30px;
+  --fs-large: 36px;
+}
