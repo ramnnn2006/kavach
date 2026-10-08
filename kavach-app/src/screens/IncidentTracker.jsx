@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { listenIncidents } from '../firebase/firestore';
+import { listenIncident } from '../firebase/firestore';
 
 const typeIcons = { lift: 'elevator', power: 'bolt', medical: 'medical_services', fire: 'local_fire_department' };
 
@@ -11,20 +11,12 @@ export default function IncidentTracker() {
   const [elapsed, setElapsed] = useState(0);
   const [escalation, setEscalation] = useState(1);
 
-  // Fetch the incident from Firestore
+  // Subscribe to just this incident (reporters can't read the whole collection)
   useEffect(() => {
-    const unsub = listenIncidents((incidents) => {
-      const found = incidents.find(i => i.id === id);
-      if (found) {
-        setIncident(found);
-        setEscalation(found.escalationLevel || 1);
-      } else if (incidents.length > 0) {
-        // If ID not found, show the latest incident
-        setIncident(incidents[0]);
-        setEscalation(incidents[0].escalationLevel || 1);
-      }
+    return listenIncident(id, (found) => {
+      setIncident(found);
+      if (found) setEscalation(found.escalationLevel || 1);
     });
-    return unsub;
   }, [id]);
 
   // Timer based on real created at

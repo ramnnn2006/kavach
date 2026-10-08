@@ -1,8 +1,10 @@
 import React, { createContext, useState, useContext, useCallback } from 'react';
 import ConfirmDialog from '../components/ConfirmDialog';
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const DialogContext = createContext(null);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useConfirm = () => {
   const context = useContext(DialogContext);
   if (!context) {

@@ -25,10 +25,28 @@ service cloud.firestore {
     }
 
     match /incidents/{incidentId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null && 
-        (resource.data.userId == request.auth.uid || getUserRole() in ['admin', 'responder']);
+      function isStaff() {
+        return getUserRole() in ['admin', 'responder'];
+      }
+
+      // Reporters see their own incidents; responders/admins see everything
+      allow read: if request.auth != null &&
+        (resource.data.reporterUid == request.auth.uid || isStaff());
+
+      // New incidents must be filed as yourself, unclaimed and pending
+      allow create: if request.auth != null &&
+        request.resource.data.reporterUid == request.auth.uid &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.assignedResponder == null &&
+        request.resource.data.escalationLevel == 1;
+
+      // Staff can update anything; reporters may only edit description/people count
+      allow update: if request.auth != null && (
+        isStaff() ||
+        (resource.data.reporterUid == request.auth.uid &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['description', 'peopleAffected']))
+      );
+
       allow delete: if request.auth != null && getUserRole() == 'admin';
     }
 

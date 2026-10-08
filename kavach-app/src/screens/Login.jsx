@@ -97,7 +97,7 @@ export default function Login({ onLoginSuccess }) {
         else { await new Promise(r => setTimeout(r, 1000)); demoLogin('student'); }
         showToast('Logged in successfully!', 'success');
       } else {
-        if (isFirebaseConfigured) await signup(formData.email, formData.password, formData.name, formData.role);
+        if (isFirebaseConfigured) await signup(formData.email, formData.password, formData.name);
         else { await new Promise(r => setTimeout(r, 1000)); demoLogin(formData.role.toLowerCase()); }
         showToast('Account created successfully!', 'success');
       }
@@ -117,7 +117,7 @@ export default function Login({ onLoginSuccess }) {
       demoLogin(role.toLowerCase());
       showToast(`Demo mode activated as ${role}`, 'success');
       if (onLoginSuccess) onLoginSuccess();
-    } catch (err) {
+    } catch {
       showToast('Failed to enter demo mode.', 'error');
     } finally {
       setIsLoading(false);
@@ -286,7 +286,8 @@ export default function Login({ onLoginSuccess }) {
             )}
           </div>
 
-          {activeTab === 'signup' && (
+          {/* Real accounts always register as student; role picking is demo-only */}
+          {activeTab === 'signup' && !isFirebaseConfigured && (
             <div>
               <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.75rem', paddingLeft: '0.25rem' }}>SELECT SYSTEM ROLE</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>

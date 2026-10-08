@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { listenIncidents, claimIncident, updateIncidentStatus } from '../firebase/firestore';
 import BottomNav from '../components/BottomNav';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -9,7 +10,8 @@ const typeIcons = { lift: 'elevator', power: 'bolt', medical: 'medical_services'
 const typeColors = { lift: 'var(--sos-red)', power: 'var(--sos-amber)', medical: 'var(--primary)', fire: 'var(--sos-orange)' };
 
 export default function ResponderAlerts() {
-  const { userProfile } = useAuth();
+  const { user, userProfile } = useAuth();
+  const { showToast } = useToast();
   const [searchParams] = useSearchParams();
   const view = searchParams.get('view') || 'alerts';
   const [incidents, setIncidents] = useState([]);
@@ -20,14 +22,18 @@ export default function ResponderAlerts() {
   }, []);
 
   const openAlerts = incidents.filter(i => i.status === 'pending');
-  const activeAlerts = incidents.filter(i => i.status !== 'pending' && i.status !== 'resolved' && i.assignedResponder === userProfile?.uid);
+  const activeAlerts = incidents.filter(i => i.status !== 'pending' && i.status !== 'resolved' && i.assignedResponder === user?.uid);
 
   const handleClaim = (inc) => {
     setDialog({
       title: 'Claim Incident',
       message: `You are taking responsibility for the ${inc.type} at ${inc.locationZone}. Proceed?`,
       onConfirm: async () => {
-        await claimIncident(inc.id, userProfile.uid, userProfile.name);
+        try {
+          await claimIncident(inc.id, user.uid, userProfile?.name || 'Responder');
+        } catch {
+          showToast('Someone else already claimed this incident.', 'error');
+        }
         setDialog(null);
       },
       onCancel: () => setDialog(null)
@@ -36,7 +42,11 @@ export default function ResponderAlerts() {
 
   const handleStatusUpdate = async (incId, newStatus) => {
     if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
-    await updateIncidentStatus(incId, newStatus);
+    try {
+      await updateIncidentStatus(incId, newStatus);
+    } catch {
+      showToast('Could not update status. Check your connection.', 'error');
+    }
   };
 
   return (

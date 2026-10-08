@@ -16,16 +16,23 @@ let demoIncidents = [
   { id: 'demo-3', type: 'medical', description: 'Student fainted in lab', locationZone: 'Lab 4, Block C', locationBuilding: 'Block C', reporterUid: 'demo-student', reporterName: 'Abishek', status: 'pending', escalationLevel: 1, urgencyScore: 35, peopleAffected: 1, assignedResponder: null, assignedResponderName: null, createdAt: Timestamp.fromDate(new Date(Date.now() - 600000)), acknowledgedAt: null, resolvedAt: null },
 ];
 
+// Each listener keeps its own filter so demo updates respect it
 let demoListeners = [];
 function notifyDemoListeners() {
-  demoListeners.forEach(cb => cb([...demoIncidents]));
+  demoListeners.forEach(({ cb, filter }) => cb(demoIncidents.filter(filter)));
+}
+function addDemoListener(cb, filter = () => true) {
+  const entry = { cb, filter };
+  demoListeners.push(entry);
+  cb(demoIncidents.filter(filter));
+  return () => { demoListeners = demoListeners.filter(l => l !== entry); };
 }
 
 
 // ── Incidents ──
 export function createIncident(data) {
   if (!isFirebaseConfigured) {
-    const newInc = { id: `demo-${Date.now()}`, ...data, createdAt: serverTimestamp(), acknowledgedAt: null, resolvedAt: null, status: 'pending', escalationLevel: 1, assignedResponder: null, assignedResponderName: null };
+    const newInc = { id: `demo-${Date.now()}`, ...data, createdAt: Timestamp.now(), acknowledgedAt: null, resolvedAt: null, status: 'pending', escalationLevel: 1, assignedResponder: null, assignedResponderName: null };
     demoIncidents = [newInc, ...demoIncidents];
     notifyDemoListeners();
     return Promise.resolve({ id: newInc.id });
@@ -56,27 +63,19 @@ export function updateIncident(id, data) {
 }
 
 export function listenIncidents(callback) {
-  if (!isFirebaseConfigured) {
-    demoListeners.push(callback);
-    callback([...demoIncidents]);
-    return () => { demoListeners = demoListeners.filter(cb => cb !== callback); };
-  }
+  if (!isFirebaseConfigured) return addDemoListener(callback);
   const q = query(incidentsRef, orderBy('createdAt', 'desc'));
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   }, (error) => {
     console.error('Firestore listenIncidents error:', error);
-    // Fallback to demo data on permission errors
-    callback([...demoIncidents]);
+    callback([]);
   });
 }
 
 export function listenMyIncidents(uid, callback) {
   if (!isFirebaseConfigured) {
-    const mine = demoIncidents.filter(i => i.reporterUid === uid || uid?.startsWith('demo'));
-    demoListeners.push(callback);
-    callback(mine);
-    return () => { demoListeners = demoListeners.filter(cb => cb !== callback); };
+    return addDemoListener(callback, i => i.reporterUid === uid || uid?.startsWith('demo'));
   }
   const q = query(incidentsRef, where('reporterUid', '==', uid));
   return onSnapshot(q, (snap) => {
@@ -93,13 +92,20 @@ export function listenMyIncidents(uid, callback) {
   });
 }
 
-export function listenPendingIncidents(callback) {
+export function listenIncident(id, callback) {
   if (!isFirebaseConfigured) {
-    const pending = demoIncidents.filter(i => i.status !== 'resolved');
-    demoListeners.push(callback);
-    callback(pending);
-    return () => { demoListeners = demoListeners.filter(cb => cb !== callback); };
+    return addDemoListener(list => callback(list[0] || null), i => i.id === id);
   }
+  return onSnapshot(doc(db, 'incidents', id), (snap) => {
+    callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+  }, (error) => {
+    console.error('Firestore listenIncident error:', error);
+    callback(null);
+  });
+}
+
+export function listenPendingIncidents(callback) {
+  if (!isFirebaseConfigured) return addDemoListener(callback, i => i.status !== 'resolved');
   const q = query(incidentsRef, where('status', 'in', ['pending', 'acknowledged', 'in_progress']));
   return onSnapshot(q, (snap) => {
     const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -171,12 +177,15 @@ export async function getUserProfile(uid) {
 }
 
 // ── Urgency Scoring ──
-export function calculateUrgency(type, peopleAffected, zoneCriticality = 0.5) {
-  const typeWeights = { fire: 1.0, medical: 0.9, lift: 0.8, power: 0.6 };
-  const tw = typeWeights[type] || 0.5;
-  const people = Math.min(peopleAffected / 50, 1);
-  const score = Math.round((tw * 30) + (people * 20) + (0 * 25) + (zoneCriticality * 25));
-  return Math.min(score, 100);
+// Score = hazard×0.35 + people×0.25 + zone×0.25 + age×0.15 (each component 0–100)
+const HAZARD_WEIGHTS = { fire: 100, medical: 90, lift: 75, power: 60 };
+
+export function calculateUrgency(type, peopleAffected, zoneCriticality = 3, ageMinutes = 0) {
+  const hazard = HAZARD_WEIGHTS[type] ?? 50;
+  const people = Math.min(peopleAffected / 50, 1) * 100;
+  const zone = Math.min(Math.max(zoneCriticality, 1), 5) * 20;
+  const age = Math.min(ageMinutes * 5, 100);
+  return Math.min(Math.round(hazard * 0.35 + people * 0.25 + zone * 0.25 + age * 0.15), 100);
 }
 
 // ── Seed Zones ──

@@ -32,7 +32,7 @@ export default function StudentHome() {
       </div>
 
       <div className="bento-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
-        {sosTypes.map((s, index) => (
+        {sosTypes.map((s) => (
           <button 
             key={s.type} 
             className={`glass-card ${s.size === 'large' ? 'bento-large' : 'bento-small'}`}

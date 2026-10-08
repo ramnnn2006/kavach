@@ -43,10 +43,11 @@ export function AuthProvider({ children }) {
     return profile;
   }
 
-  async function signup(email, password, name, role) {
+  async function signup(email, password, name) {
     if (!isFirebaseConfigured) throw new Error('Firebase not configured. Use Demo mode instead.');
     const cred = await createUserWithEmailAndPassword(auth, email, password);
-    const profile = { name, email, role, phone: '' };
+    // Firestore rules only allow self-registration as 'student'; admins promote responders/admins.
+    const profile = { name, email, role: 'student', phone: '' };
     await setUserProfile(cred.user.uid, profile);
     setProfile(profile);
     return profile;
